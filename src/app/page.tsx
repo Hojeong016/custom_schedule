@@ -1,103 +1,73 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import Image from 'next/image'
+import Link from 'next/link'
+import { Header } from '@/components/Header'
+import { Footer } from '@/components/Footer'
+
+export default function HomePage() {
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 md:px-10 py-16 space-y-10">
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+      
+      {/* 제목 + 반짝이 */}
+      <div className="relative w-fit mx-auto">
+      <h1 className="text-4xl md:text-6xl font-bold font-cute tracking-wide leading-tight text-gray-800 drop-shadow-md animate-fade-in-down text-center">
+          Custom Schedule
+        </h1>
+      </div>
+
+      {/* 설명 */}
+      <p className="text-gray-600 text-center text-base md:text-lg font-cute max-w-xl leading-relaxed">
+        당직표를 직접 만드는 일 생각보다 번거롭고 시간이 걸리죠. <br />
+        그래서 준비했어요. <br />
+        누구나 쉽게, 단 몇 분이면 <br />
+        <strong>선생님 맞춤 당직표를 자동으로 완성할 수 있어요.</strong>
+        <br />
+        <br />
+        선생님의 소중한 시간을 아껴드릴게요. <br />
+        하루가 조금 더 가벼워지고, 마음엔 여유가 피어나길 바랍니다. 🍀
+      </p>
+
+      {/* 이미지 */}
+      <div className="shadow-xl rounded-xl overflow-hidden border border-purple-100">
+        <Image
+          src="/images/mainImg.png"
+          alt="귀여운 당직표 이미지"
+          width={600}
+          height={400}
+          className="object-cover"
+        />
+      </div>
+
+      {/* 광고 영역 */}
+      <div className="w-full max-w-2xl h-24 md:h-32 bg-white/50 border border-dashed border-gray-300 flex items-center justify-center rounded-xl shadow-inner">
+        <p className="text-gray-500 text-sm md:text-base">[ 이 공간은 사랑받는 광고를 기다리고 있어요 💛 ]</p>
+      </div>
+
+      {/* 버튼 + 문구 */}
+      <div className="flex flex-col md:flex-row justify-between items-center w-full max-w-xl mt-6 space-y-4 md:space-y-0 animate-fade-in-up">
+  
+  {/* 문구 - 왼쪽 정렬 */}
+  <p className="text-lg font-semibold text-center md:text-left font-cute">
+    Ready? Let’s continue! 🚀
+  </p>
+
+  {/* 버튼 그룹 - 오른쪽 정렬 */}
+  <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4">
+    <Link href="/create">
+      <button    className="flex items-center gap-2 px-6 py-2 rounded-full bg-[#fbc4ab] text-[#5a3d1e] font-semibold shadow-sm hover:bg-[#f6a28c] hover:shadow-md transition-all duration-300 whitespace-nowrap">
+        생성하기
+      </button>
+    </Link>
+    <Link href="/input">
+      <button className="border border-black text-black py-2 px-6 rounded-full hover:bg-amber-200 hover:text-black hover:scale-105 transition-all duration-300 ease-in-out">
+         추천하기
+      </button>
+    </Link>
+  </div>
+</div>
+    </div> // ✅ 전체 return 닫기
+  )
 }

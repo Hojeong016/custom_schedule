@@ -24,3 +24,139 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out both;
+}
+
+@keyframes fade-in-down {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in-down {
+  animation: fade-in-down 1s ease-out forwards;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 1s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 1.2s ease-out forwards;
+}
+
+.loader {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #000;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.react-calendar {
+  width: 100% !important; /* 너비를 100%로 설정 */
+  height: 100% !important; /* 높이 800px로 고정 */
+  max-width: 100% !important; /* 화면에 맞게 최대 크기 확장 */
+  margin: 0 auto; /* 가운데 정렬 */
+}
+
+.my-calendar .react-calendar__month-view {
+  width: 100% !important; /* 월 뷰를 100%로 확장 */
+  height: 100% !important; /* 월 뷰의 높이도 전체 차지 */
+}
+
+.my-calendar .react-calendar__tile {
+  font-size: 14px;
+  height: 120px; /* 타일 높이 확장 */
+  width: 120px;  /* 타일 너비 확장 */
+  line-height: 30px; /* 날짜 수평 중앙 정렬 */
+  padding: 10px; /* 타일 내 여백 확장 */
+  display: flex;
+  flex-direction: column; /* 여러 줄로 당직자 이름 나열 */
+  justify-content: flex-start; /* 날짜 위쪽으로 정렬 */
+  align-items: center;
+  border-radius: 8px;
+  border: 1px solid #ddd; /* 타일의 경계선 추가 */
+  background-color: #fff; /* 기본 배경색 */
+  transition: background-color 0.3s ease;
+}
+
+.my-calendar .react-calendar__tile div {
+  font-size: 12px; /* 당직 이름 폰트 크기 */
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around; /* 당직자 여러 명을 세로로 배치 */
+  align-items: center;
+  line-height: 1.2;
+  word-wrap: break-word; /* 긴 이름 처리 */
+  margin-top: 5px; /* 날짜와 당직자 이름 간의 간격 */
+  overflow-y: auto; /* 정보가 많을 때 스크롤 */
+  max-height: 70%; /* 최대 높이를 제한하여 스크롤이 생기도록 설정 */
+}
+
+.my-calendar .react-calendar__tile .bg-yellow-200 {
+  background-color: #FFEB3B; /* 오전 당직 배경 색상 */
+  color: #333; /* 글자 색상 */
+}
+
+.my-calendar .react-calendar__tile .bg-blue-200 {
+  background-color: #2196F3; /* 오후 당직 배경 색상 */
+  color: #fff; /* 글자 색상 */
+}
+
+.my-calendar .react-calendar__tile .bg-red-200 {
+  background-color: #f44336; /* 공석 색상 */
+  color: white;
+}
+
+.my-calendar .react-calendar__tile:hover {
+  background-color: rgba(0, 0, 0, 0.1); /* hover 시 배경 색상 */
+}
+
+.react-calendar__tile--active {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+@media (max-width: 768px) {
+  .my-calendar {
+    width: 100%;
+    height: 600px; /* 세로 크기 조정 */
+  }
+}
+
