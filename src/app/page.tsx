@@ -23,7 +23,7 @@ export default function HomePage() {
         당직표를 직접 만드는 일 생각보다 번거롭고 시간이 걸리죠. <br />
         그래서 준비했어요. <br />
         누구나 쉽게, 단 몇 분이면 <br />
-        <strong>선생님 맞춤 당직표를 자동으로 완성할 수 있어요.</strong>
+        <strong>맞춤 당직표를 자동으로 완성할 수 있어요.</strong>
         <br />
         <br />
         선생님의 소중한 시간을 아껴드릴게요. <br />
@@ -43,7 +43,7 @@ export default function HomePage() {
 
       {/* 광고 영역 */}
       <div className="w-full max-w-2xl h-24 md:h-32 bg-white/50 border border-dashed border-gray-300 flex items-center justify-center rounded-xl shadow-inner">
-        <p className="text-gray-500 text-sm md:text-base">[ 이 공간은 사랑받는 광고를 기다리고 있어요 💛 ]</p>
+        <p className="text-gray-500 text-sm md:text-base">[ 이 공간은 광고가 들어올 예정입니다.]</p>
       </div>
 
       {/* 버튼 + 문구 */}
