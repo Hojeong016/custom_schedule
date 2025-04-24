@@ -50,14 +50,15 @@ export default function HomePage() {
       </div>
 
      
-      <div className="w-full max-w-2xl px-4 md:px-0">
+        {/* 광고 영역 - 보이도록 수정 */}
+        <div className="w-full max-w-2xl px-4 md:px-0">
         <div id="kakao-ad" className="flex justify-center items-center h-24 md:h-32">
           <ins
             className="kakao_ad_area"
-            style={{ display: 'none' }}
             data-ad-unit="DAN-loD8LggbbgKOeb4m"
             data-ad-width="728"
             data-ad-height="90"
+            style={{ display: 'block' }}
           ></ins>
         </div>
       </div>
