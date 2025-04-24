@@ -63,28 +63,28 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* 버튼 + 문구 */}
+     {/* 버튼 + 문구 */}
       <div className="flex flex-col md:flex-row justify-between items-center w-full max-w-xl mt-6 space-y-4 md:space-y-0 animate-fade-in-up">
   
-  {/* 문구 - 왼쪽 정렬 */}
-  <p className="text-lg font-semibold text-center md:text-left font-cute">
-    Ready? Let’s continue! 🚀
-  </p>
+     {/* 문구 - 왼쪽 정렬 */}
+      <p className="text-lg font-semibold text-center md:text-left font-cute">
+        Ready? Let’s continue! 🚀
+      </p>
 
-  {/* 버튼 그룹 - 오른쪽 정렬 */}
-  <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4">
-    <Link href="/create">
-      <button    className="flex items-center gap-2 px-6 py-2 rounded-full bg-[#fbc4ab] text-[#5a3d1e] font-semibold shadow-sm hover:bg-[#f6a28c] hover:shadow-md transition-all duration-300 whitespace-nowrap  dark:text-white">
-        생성하기
-      </button>
-    </Link>
-    <Link href="/input">
-      <button className="border border-black text-black py-2 px-6 rounded-full hover:bg-amber-200 hover:text-black hover:scale-105 transition-all duration-300 ease-in-out dark:text-white">
-         추천하기
-      </button>
-    </Link>
-  </div>
-</div>
-    </div> // ✅ 전체 return 닫기
-  )
+      {/* 버튼 그룹 - 오른쪽 정렬 */}
+      <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4">
+        <Link href="/create">
+          <button    className="flex items-center gap-2 px-6 py-2 rounded-full bg-[#fbc4ab] text-[#5a3d1e] font-semibold shadow-sm hover:bg-[#f6a28c] hover:shadow-md transition-all duration-300 whitespace-nowrap  dark:text-white">
+            생성하기
+          </button>
+        </Link>
+        <Link href="/input">
+          <button className="border border-black text-black py-2 px-6 rounded-full hover:bg-amber-200 hover:text-black hover:scale-105 transition-all duration-300 ease-in-out dark:text-white">
+            추천하기
+          </button>
+        </Link>
+      </div>
+    </div>
+        </div> // ✅ 전체 return 닫기
+      )
 }

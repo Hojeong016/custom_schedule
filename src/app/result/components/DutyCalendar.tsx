@@ -3,7 +3,7 @@
 import { useMediaQuery } from 'react-responsive';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import DutyPieChart from './DutyPieChart'; // 경로는 실제 위치에 맞게 수정!
+import DutyPieChart from './DutyPieChart'; 
 import { useState, useEffect } from 'react';
 import { exportScheduleToWord } from "@/lib/exportToWord";
 import { ChevronDown, List } from 'lucide-react';
@@ -18,6 +18,7 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 type DutyType = '오전 당직 1' | '오전 당직 2' | '오후 당직 1' | '오후 당직 2' | '합계';
+
 
 interface Duty {
   name: string;
@@ -39,6 +40,24 @@ interface AssignedDuty {
 interface LeaveMap {
   [date: string]: string[];
 }
+
+function getSpecialEventDates(events: { startDate: string; endDate: string }[]): Set<string> {
+  const dateSet = new Set<string>();
+  for (const event of events) {
+    const start = new Date(event.startDate);
+    const end = new Date(event.endDate);
+    for (
+      let d = new Date(start);
+      d <= end;
+      d.setDate(d.getDate() + 1)
+    ) {
+      const dateKey = new Date(d).toLocaleDateString('sv-SE');
+      dateSet.add(dateKey);
+    }
+  }
+  return dateSet;
+}
+
 
 function isOnLeave(teacher: Teacher, date: Date) {
   if (!teacher.leaveDateStart || !teacher.leaveDateEnd) return false;
@@ -72,6 +91,16 @@ export function generateSchedule(
   const leaveMap: LeaveMap = {};
   const stats: Record<string, Record<DutyType, number>> = {};
 
+  let excludedDates: Set<string> = new Set();
+  if (typeof window !== 'undefined') {
+    const eventsStr = sessionStorage.getItem('specialEvents');
+    const specialEvents: { title: string; startDate: string; endDate: string }[] = eventsStr ? JSON.parse(eventsStr) : [];
+    excludedDates = getSpecialEventDates(specialEvents);
+    
+  }
+
+
+
   for (const teacher of teachers) {
     stats[teacher.name] = {
       '오전 당직 1': 0,
@@ -86,8 +115,10 @@ export function generateSchedule(
     const dateObj = new Date(year, month - 1, day);
     const dateKey = dateObj.toLocaleDateString('sv-SE');
 
-    if (isWeekend(dateObj) || isHoliday(dateObj)) continue;
-
+    if (excludedDates.has(dateKey) || isWeekend(dateObj) || isHoliday(dateObj)) continue;
+    console.log("❗ 제외 날짜 목록:", Array.from(excludedDates));
+    console.log("✔️ 현재 날짜 확인:", dateKey);
+    
     schedule[dateKey] = {};
     leaveMap[dateKey] = teachers.filter(t => isOnLeave(t, dateObj)).map(t => t.name);
     const assignedToday = new Set<string>();
@@ -172,9 +203,18 @@ export default function DutyCalendar() {
     setRefreshKey(prev => prev + 1);
   };
 
+  const [excludedDates, setExcludedDates] = useState<Set<string>>(new Set());
+  const [specialEvents, setSpecialEvents] = useState<{ title: string; startDate: string; endDate: string }[]>([]);
+  
   useEffect(() => {
     setIsClient(true);
     regenerateSchedule();
+
+    const eventsStr = sessionStorage.getItem('specialEvents');
+    const specialEvents = eventsStr ? JSON.parse(eventsStr) : [];
+    const dates = getSpecialEventDates(specialEvents);
+    setExcludedDates(dates);
+    setSpecialEvents(specialEvents);
   }, []);
 
   if (!isClient || !value) return null;
@@ -208,17 +248,43 @@ export default function DutyCalendar() {
       const dateKey = date.toLocaleDateString('sv-SE');
       const dutiesToday = schedule[dateKey];
       const leavesToday = leaveMap[dateKey];
+      
+      const matchingEvent = specialEvents.find(event => {
+        const start = new Date(event.startDate);
+        const end = new Date(event.endDate);
+        const current = new Date(dateKey);
+        return start <= current && current <= end;
+      });
+      
+      // 전역 excludedDates 사용
+      const hasSpecialEvent = excludedDates.has(dateKey);
+
+      const hasContent =
+        (dutiesToday && Object.keys(dutiesToday).length > 0) ||
+        (leavesToday && leavesToday.length > 0) ||
+        hasSpecialEvent;
+    
+      if (!hasContent) return null;
+
+      console.log(`특별 일정 확인: ${dateKey}`, excludedDates.has(dateKey));
       if (isMobile) {
-        return leavesToday?.length ? (
-          <div className="mt-1 text-[10px] leading-3">
-            <div className="bg-red-50 text-red-500 rounded p-1 font-medium">
-              📌 연차: {leavesToday.join(', ')}
-            </div>
+        return (
+          <div className="mt-1 text-[10px] leading-3 space-y-1">
+            {matchingEvent && (
+              <div className="bg-yellow-100 text-yellow-800 rounded p-1 font-medium">
+                📅 {matchingEvent.title}
+              </div>
+            )}
+            {leavesToday?.length > 0 && (
+              <div className="bg-red-50 text-red-500 rounded p-1 font-medium">
+                📌 연차: {leavesToday.join(', ')}
+              </div>
+            )}
           </div>
-        ) : null;
+        );
       }
     
-      if (!dutiesToday && !leavesToday?.length) return null;
+      if (!dutiesToday && !leavesToday?.length && !hasSpecialEvent) return null;
       return (
         <div className="mt-1 text-[10px] leading-3 space-y-1">
           {dutiesToday && Object.entries(dutiesToday).map(([dutyType, teacherNames], idx) => {
@@ -236,7 +302,12 @@ export default function DutyCalendar() {
               📌 연차: {leavesToday.join(', ')}
             </div>
           )}
-        </div>
+        {matchingEvent && (
+  <div className="bg-yellow-100 text-yellow-800 rounded p-1 text-[10px] font-medium">
+    📅 {matchingEvent.title}
+  </div>
+)}
+    </div>
       );
     }}
   />

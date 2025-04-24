@@ -29,6 +29,30 @@ export default function CreateForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
 
+  type SpecialEvent = {
+    title: string;
+    startDate: string;
+    endDate: string;
+    hasError?: boolean;
+  };
+  
+  const [specialEvents, setSpecialEvents] = useState<SpecialEvent[]>([]);
+  const [eventInput, setEventInput] = useState({ title: "", startDate: "", endDate: "" });
+
+  const addSpecialEvent = () => {
+    const { title, startDate, endDate } = eventInput;
+    if (!title.trim() || !startDate || !endDate) return;
+  
+    setSpecialEvents([...specialEvents, { ...eventInput }]);
+    setEventInput({ title: "", startDate: "", endDate: "" });
+  };
+  
+  const removeSpecialEvent = (index: number) => {
+    const updated = [...specialEvents];
+    updated.splice(index, 1);
+    setSpecialEvents(updated);
+  };
+  
   const getMonthRange = (month: number) => {
     const year = 2025;
     const startDate = new Date(Date.UTC(year, month - 1, 1));
@@ -132,12 +156,13 @@ export default function CreateForm() {
       return;
     }
   
-    // ✅ 세션 저장 및 이동
+    // 세션 저장 및 이동
     if (typeof window !== "undefined") {
       sessionStorage.removeItem('teachers');
       sessionStorage.setItem('duties', JSON.stringify(selectedDuties));
       sessionStorage.setItem('teachers', JSON.stringify(teachers));
       sessionStorage.setItem('month', selectedMonth.toString());
+      sessionStorage.setItem('specialEvents', JSON.stringify(specialEvents));
     }
   
     setIsLoading(true);
@@ -155,7 +180,7 @@ export default function CreateForm() {
       return;
     }
   
-    setStep(2); // ✅ 통과 시만 이동
+    setStep(2); 
   };
 
   return (
@@ -188,6 +213,7 @@ export default function CreateForm() {
     ))}
   </select>
 </div>
+
       {step >= 1 && (
         <div className="flex flex-col items-center space-y-6 w-full">
           <h2 className="text-xl font-bold w-full text-left text-[#5a3d1e]  dark:text-white">1. 당직 유형을 선택하고 인원을 설정해주세요.</h2>
@@ -260,7 +286,7 @@ export default function CreateForm() {
                 }
               }}
               placeholder="교사 이름 입력"
-             className="flex-1 px-4 py-2 rounded-2xl border border-gray-300 shadow-sm bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all"
+              className="flex-1 px-4 py-2 rounded-2xl border border-gray-300 shadow-sm bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all"
             />
             <button
               onClick={addTeacher}
@@ -273,8 +299,8 @@ export default function CreateForm() {
            <div
            key={idx}
            className={`relative p-5 rounded-2xl shadow-md bg-white border ${
-    teacher.hasError ? 'border-red-400 bg-red-50 dark:bg-red-50' : 'border-gray-200'
-  }`}
+            teacher.hasError ? 'border-red-400 bg-red-50 dark:bg-red-50' : 'border-gray-200'
+          }`}
          >
            <div className="flex justify-between items-center w-full">
              {/* 교사 이름 (왼쪽) */}
@@ -315,6 +341,74 @@ export default function CreateForm() {
            </div>
          </div>
             ))}
+
+            {/* 교사 등록 섹션 아래에 추가 */}
+<h3 className="text-lg font-semibold text-left w-full text-[#5a3d1e] dark:text-white mt-8">3. 기관의 특별한 일정을 등록해주세요.</h3>
+<p className="text-sm w-full text-left text-[#5a3d1e] dark:text-gray-300 mb-1">
+            대체 공휴일, 신학기 준비 기간등 기관의 특별한 일정을 등록해주세요.
+            <br></br>
+            등록된 일자에는 당직 교사가 배정되지 않습니다.
+          </p>
+
+<div className="mt-6 w-full flex flex-col md:flex-row gap-3 items-center">
+  <input
+    type="text"
+    value={eventInput.title}
+    onChange={(e) => setEventInput({ ...eventInput, title: e.target.value })}
+    placeholder="일정 이름"
+    className="flex-1 px-4 py-2 rounded-2xl border border-gray-300 bg-white text-gray-800 placeholder-gray-400"
+  />
+  <div className="flex flex-row gap-2">
+  <input
+  type="date"
+  value={eventInput.startDate}
+  min={getMonthRange(selectedMonth).start}
+  max={getMonthRange(selectedMonth).end}
+  onChange={(e) => setEventInput({ ...eventInput, startDate: e.target.value })}
+  className="border px-2 py-1 rounded text-sm"
+/>
+
+<input
+  type="date"
+  value={eventInput.endDate}
+  min={getMonthRange(selectedMonth).start}
+  max={getMonthRange(selectedMonth).end}
+  onChange={(e) => setEventInput({ ...eventInput, endDate: e.target.value })}
+  className="border px-2 py-1 rounded text-sm"
+/>
+</div>
+
+  <button
+    onClick={addSpecialEvent}
+    className="px-4 py-2 bg-[#fbc4ab] rounded-2xl text-[#5a3d1e] hover:bg-[#f6a28c]"
+  >
+    추가
+  </button>
+</div>
+
+{/* 일정 목록 */}
+<div className="w-full mt-4 space-y-3">
+  {specialEvents.map((event, idx) => (
+   <div
+   key={idx}
+   className={`relative p-5 rounded-2xl shadow-md bg-white border flex justify-between items-center ${
+    event.hasError ? 'border-red-400 bg-red-50 dark:bg-red-50' : 'border-gray-200'
+  }`}
+ >
+      <div>
+        <div className="font-semibold text-gray-800">{event.title}</div>
+        <div className="text-sm text-gray-600">{event.startDate} ~ {event.endDate}</div>
+      </div>
+      <button
+      onClick={() => removeSpecialEvent(idx)}
+      className="text-gray-400 hover:text-red-500 text-3xl font-bold"
+      >
+        ×
+      </button>
+    </div>
+  ))}
+</div>
+
           </div>
 
           {!isLoading ? (
@@ -331,6 +425,7 @@ export default function CreateForm() {
         </div>
         </motion.div>
       )}
+
     </div>
   );
 }
