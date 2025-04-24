@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import "./globals.css";
+import Script from "next/script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,7 +26,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className="dark"><body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen relative overflow-x-hidden`}>
+    <html lang="ko" className="dark">
+        <head>
+        {/* ✅ 카카오 애드핏 스크립트 삽입 */}
+        <Script
+          src="//t1.daumcdn.net/kas/static/ba.min.js"
+          strategy="afterInteractive"
+        />
+      </head>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen relative overflow-x-hidden`}>
         {/* 💫 그라데이션 배경 (다크모드 대응!) */}
         <div className="absolute inset-0 -z-10 
           bg-[linear-gradient(to_bottom_right,rgba(255,236,179,0.3),rgba(255,205,210,0.3),rgba(248,187,208,0.3))] 

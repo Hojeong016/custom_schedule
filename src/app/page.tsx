@@ -8,12 +8,7 @@ import { Header } from '@/components/Header'
 import { Footer } from '@/components/Footer'
 
 export default function HomePage() {
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = '//t1.daumcdn.net/kas/static/ba.min.js';
-    script.async = true;
-    document.querySelector('#kakao-ad')?.appendChild(script);
-  }, []);
+ 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 md:px-10 py-16 space-y-10">
 
