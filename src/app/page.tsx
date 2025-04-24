@@ -20,9 +20,10 @@ export default function HomePage() {
       
       {/* 제목 + 반짝이 */}
       <div className="relative w-fit mx-auto">
-      <h1 className="text-4xl md:text-6xl font-bold font-cute tracking-wide leading-tight text-gray-800 drop-shadow-md animate-fade-in-down text-center dark:text-white">
-          Custom Schedule
-        </h1>
+      <h1 className="text-4xl md:text-6xl font-bold font-cute tracking-wide leading-tight text-[#5a3d1e] drop-shadow-md animate-fade-in-down text-center dark:text-white">
+  Custom Schedule
+</h1>
+
       </div>
 
       {/* 설명 */}
