@@ -31,7 +31,7 @@ export default function DutyPieChart({ stats }: DutyPieChartProps) {
       const d = payload[0].payload;
       return (
         <div className="bg-white p-3 rounded shadow text-sm space-y-1">
-          <div className="font-bold">{d.name}</div>
+          <div className="font-bold text-black">{d.name}</div>
           <div>🍳 오전 당직 1: {d['오전 당직 1']}회</div>
           <div>🍳 오전 당직 2: {d['오전 당직 2']}회</div>
           <div>🌙 오후 당직 1: {d['오후 당직 1']}회</div>
@@ -44,7 +44,7 @@ export default function DutyPieChart({ stats }: DutyPieChartProps) {
   };
 
   return (
-    <div className="w-full max-w-md h-80 mx-auto">
+    <div className="w-full max-w-md h-80 mx-auto text-black ">
       <ResponsiveContainer>
         <PieChart>
           <Pie
@@ -61,11 +61,11 @@ export default function DutyPieChart({ stats }: DutyPieChartProps) {
                   <text
                     x={x}
                     y={y}
-                    fill="#333"
+                    fill={document.documentElement.classList.contains('dark') ? '#fff' : '#333'}
                     textAnchor={x > cx ? 'start' : 'end'}
                     dominantBaseline="central"
                     fontSize={12}
-                    className="font-semibold"
+                    className="font-semibold "
                   >
                     {name}
                   </text>

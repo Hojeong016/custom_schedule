@@ -1,10 +1,12 @@
 'use client';
 
+import { useMediaQuery } from 'react-responsive';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import DutyPieChart from './DutyPieChart'; // 경로는 실제 위치에 맞게 수정!
 import { useState, useEffect } from 'react';
 import { exportScheduleToWord } from "@/lib/exportToWord";
+import { ChevronDown, List } from 'lucide-react';
 
 function shuffleArray<T>(array: T[]): T[] {
   const result = [...array];
@@ -128,6 +130,12 @@ export function generateSchedule(
 }
 
 export default function DutyCalendar() {
+  const isMobile = useMediaQuery({ maxWidth: 768 });
+
+  const getSortedDateKeys = () => {
+    return Object.keys(schedule).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+  };
+  const [showList, setShowList] = useState(false);
   const [value, setValue] = useState<Date | null>(null);
   const [schedule, setSchedule] = useState<AssignedDuty>({});
   const [leaveMap, setLeaveMap] = useState<LeaveMap>({});
@@ -172,9 +180,9 @@ export default function DutyCalendar() {
   if (!isClient || !value) return null;
 
   return (
-    <div className="flex flex-col items-center p-8">
+    <div className="flex flex-col items-center p-8  dark:text-white">
       <div className="flex items-center justify-between w-full mb-8">
-      <h1 className="text-3xl font-bold w-full text-left text-[#5a3d1e]">
+      <h1 className="text-3xl font-bold w-full text-left text-[#5a3d1e] dark:text-white">
   {value?.getMonth() + 1}월 당직표
 </h1>
 
@@ -185,8 +193,8 @@ export default function DutyCalendar() {
   📄 Word
 </button>
 </div>
-<div className="w-full bg-white rounded-2xl shadow-md p-6 mb-12 overflow-hidden">
-  <div className="max-w-5xl mx-auto">
+<div className="w-full bg-white rounded-2xl shadow-md p-6 mb-12 overflow-hidden  ">
+  <div className="max-w-5xl mx-auto dark:hover:bg-[#2a2a2a] transition-colors  dark:text-black">
   <Calendar
     key={refreshKey}
     onChange={(nextValue) => {
@@ -200,6 +208,16 @@ export default function DutyCalendar() {
       const dateKey = date.toLocaleDateString('sv-SE');
       const dutiesToday = schedule[dateKey];
       const leavesToday = leaveMap[dateKey];
+      if (isMobile) {
+        return leavesToday?.length ? (
+          <div className="mt-1 text-[10px] leading-3">
+            <div className="bg-red-50 text-red-500 rounded p-1 font-medium">
+              📌 연차: {leavesToday.join(', ')}
+            </div>
+          </div>
+        ) : null;
+      }
+    
       if (!dutiesToday && !leavesToday?.length) return null;
       return (
         <div className="mt-1 text-[10px] leading-3 space-y-1">
@@ -207,7 +225,7 @@ export default function DutyCalendar() {
             const bgColor = getDutyColorClass(dutyType);
             return (
               <div key={idx} className={`${bgColor} p-1 rounded-md`}>
-                <span className="text-[11px] text-black font-semibold">
+                <span className="text-[11px] text-black font-semibold dark:text-black">
                   {dutyType}: <span className="font-normal text-black-900">{teacherNames.join(', ')}</span>
                 </span>
               </div>
@@ -224,30 +242,77 @@ export default function DutyCalendar() {
   />
 </div> 
 </div>
-<div className="mt-16 w-full">
-  <div className="flex items-center justify-between mb-6">
-    <h2 className="text-xl font-bold w-full text-left text-[#5a3d1e]">
-    </h2>
-    <div className="flex gap-3">
-      <button
-        onClick={regenerateSchedule}
-          className="flex items-center gap-2 px-6 py-2 rounded-full bg-[#fbc4ab] text-[#5a3d1e] font-semibold shadow-sm hover:bg-[#f6a28c] hover:shadow-md transition-all duration-300 whitespace-nowrap"
-      >
-        다시 배정하기
-      </button>
 
-      <button
-        onClick={() => window.location.href = '/'}
-          className="flex items-center gap-2 px-6 py-2 rounded-full bg-[#fbc4ab] text-[#5a3d1e] font-semibold shadow-sm hover:bg-[#f6a28c] hover:shadow-md transition-all duration-300 whitespace-nowrap"
-      >
-        첫 화면으로
-      </button>
-    </div>
+{isMobile && (
+        <div className="w-full">
+         <button
+  onClick={() => setShowList(prev => !prev)}
+  className="flex items-center gap-2 mx-auto mb-6 px-4 py-2 rounded-full bg-[#fbc4ab] text-[#5a3d1e] font-semibold shadow-sm hover:bg-[#f6a28c] hover:shadow-md transition-all duration-300 "
+>
+  {showList ? (
+    <>
+      <ChevronDown className="w-4 h-4" />
+      <span>리스트 닫기</span>
+    </>
+  ) : (
+    <>
+      <List className="w-4 h-4" />
+      <span>📋 리스트로 보기</span>
+    </>
+  )}
+</button>
+          {showList && (
+            <div className="w-full bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-md p-6 space-y-4">
+              {getSortedDateKeys().map((dateKey) => {
+                const duties = schedule[dateKey];
+                const leaves = leaveMap[dateKey];
+                const date = new Date(dateKey);
+                const label = `${date.getMonth() + 1}월 ${date.getDate()}일`;
+
+                return (
+                  <div key={dateKey} className="border-b border-gray-200 dark:border-gray-600 pb-2 mb-2">
+                    <p className="font-semibold text-gray-800 dark:text-white">{label}</p>
+                    {Object.entries(duties || {}).map(([dutyType, names], idx) => (
+                      <p key={idx} className="text-sm text-gray-700 dark:text-gray-300 pl-2">
+                        • {dutyType}: {names.join(', ')}
+                      </p>
+                    ))}
+                    {leaves?.length > 0 && (
+                      <p className="text-sm text-red-500 pl-2">📌 연차: {leaves.join(', ')}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )} </div>
+        )}
+
+<div className="mt-16 w-full">
+<div className="w-full flex flex-col items-center gap-3 mb-6 md:flex-row md:justify-between">
+  <h2 className="text-xl font-bold w-full text-left text-[#5a3d1e] md:w-auto">
+  </h2>
+
+  <div className="flex flex-col items-center gap-3 md:flex-row md:justify-end md:items-start">
+    <button
+      onClick={regenerateSchedule}
+      className="flex items-center gap-2 px-6 py-2 rounded-full bg-[#fbc4ab] text-[#5a3d1e] font-semibold shadow-sm hover:bg-[#f6a28c] hover:shadow-md transition-all duration-300 whitespace-nowrap"
+    >
+      다시 배정하기
+    </button>
+
+    <button
+      onClick={() => window.location.href = '/'}
+      className="flex items-center gap-2 px-6 py-2 rounded-full bg-[#fbc4ab] text-[#5a3d1e] font-semibold shadow-sm hover:bg-[#f6a28c] hover:shadow-md transition-all duration-300 whitespace-nowrap"
+    >
+      첫 화면으로
+    </button>
   </div>
-  <div className="w-full flex flex-col md:flex-row gap-8 mt-16 items-start">
+</div>
+
+  <div className="w-full flex flex-col md:flex-row gap-8 mt-16 items-start  dark:text-white">
           {/* 📊 파이 차트 */}
           <div className="w-full md:w-80 flex-shrink-0">
-            <h3 className="text-xl font-bold w-full text-left text-[#5a3d1e]">📊 교사별 총 당직 비율</h3>
+            <h3 className="text-xl font-bold w-full text-left text-[#5a3d1e] dark:text-white ">📊 교사별 총 당직 비율</h3>
             <DutyPieChart stats={stats} />
           </div>
 
@@ -255,7 +320,7 @@ export default function DutyCalendar() {
           <div className="flex-1 bg-white rounded-2xl shadow-lg p-6">
             <h3 className="text-xl font-bold w-full text-left text-[#5a3d1e]">📋 당직 횟수 요약</h3>
             <div className="overflow-x-auto">
-              <table className="min-w-full table-auto text-sm text-center">
+              <table className="min-w-full table-auto text-sm text-center dark:text-black">
                 <thead>
                 <tr className="bg-[#fff3e6] text-[#5a3d1e]">
                     <th className="px-4 py-2 font-semibold">교사</th>

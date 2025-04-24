@@ -161,7 +161,7 @@ export default function CreateForm() {
   return (
     <div className="flex flex-col items-center space-y-15 w-full max-w-2xl">
     <div className="w-full flex flex-col md:flex-row items-start md:items-center space-y-2 md:space-y-0 md:space-x-4">
-  <label className="text-base md:text-lg font-semibold text-[#5a3d1e] drop-shadow-sm">
+  <label className="text-base md:text-lg font-semibold text-[#5a3d1e] drop-shadow-sm  dark:text-white">
   몇 월의 당직표를 만들까요?
   </label>
 
@@ -190,8 +190,12 @@ export default function CreateForm() {
 </div>
       {step >= 1 && (
         <div className="flex flex-col items-center space-y-6 w-full">
-          <h2 className="text-xl font-bold w-full text-left text-[#5a3d1e]">1. 당직 유형을 선택하고 인원을 설정해주세요.</h2>
-          <div className="grid grid-cols-2 gap-4 w-full">
+          <h2 className="text-xl font-bold w-full text-left text-[#5a3d1e]  dark:text-white">1. 당직 유형을 선택하고 인원을 설정해주세요.</h2>
+          <p className="text-sm w-full text-left text-[#5a3d1e] dark:text-gray-300 mb-1">
+            원하는 당직 유형을 클릭하면 활성화되고, 인원 수를 설정할 수 있어요. <br className="hidden md:block" />
+            한 번 더 클릭하면 해제돼요!
+          </p>
+          <div className="mt-6 grid grid-cols-2 gap-4 w-full">
             {dutyOptions.map((duty, idx) => {
               const isSelected = selectedDuties.some(d => d.name === duty.name);
               const selectedDuty = selectedDuties.find(d => d.name === duty.name);
@@ -228,7 +232,7 @@ export default function CreateForm() {
           </div>
           <button
         onClick={handleNextStep}
-       className="mt-4 text-[#5a3d1e] text-lg font-semibold px-4 py-2 rounded transition-all duration-300 ease-in-out hover:bg-white/30 hover:backdrop-blur-sm"
+       className="mt-4 text-[#5a3d1e] text-lg font-semibold px-4 py-2 rounded transition-all duration-300 ease-in-out hover:bg-white/30 hover:backdrop-blur-sm dark:bg-amber-300 dark:text-gray-900 dark:hover:bg-amber-200 transition-all duration-300"
       >
        다음
       </button>
@@ -243,7 +247,7 @@ export default function CreateForm() {
            transition={{ duration: 0.5, ease: 'easeOut' }}
          >
         <div className="flex flex-col items-center space-y-15 w-full">
-          <h2 className="text-xl font-bold w-full text-left text-[#5a3d1e]">2. 교사 이름을 등록해주세요.</h2>
+          <h2 className="text-xl font-bold w-full text-left text-[#5a3d1e]  dark:text-white">2. 교사 이름을 등록해주세요.</h2>
           <div className="w-full flex gap-3 items-center">
             <input
               type="text"
@@ -260,7 +264,7 @@ export default function CreateForm() {
             />
             <button
               onClick={addTeacher}
-            className="px-5 py-2 rounded-2xl bg-[#fbc4ab] text-[#5a3d1e] font-medium hover:bg-[#f6a28c] hover:shadow-md transition-all duration-300"
+            className="px-5 py-2 rounded-2xl bg-[#fbc4ab] text-[#5a3d1e] font-medium hover:bg-[#f6a28c] hover:shadow-md transition-all duration-300 dark:bg-amber-300 dark:text-gray-900 dark:hover:bg-amber-200 transition-all duration-300"
             >추가</button>
           </div>
 
@@ -269,12 +273,12 @@ export default function CreateForm() {
            <div
            key={idx}
            className={`relative p-5 rounded-2xl shadow-md bg-white border ${
-    teacher.hasError ? 'border-red-400 bg-red-50' : 'border-gray-200'
+    teacher.hasError ? 'border-red-400 bg-red-50 dark:bg-red-50' : 'border-gray-200'
   }`}
          >
            <div className="flex justify-between items-center w-full">
              {/* 교사 이름 (왼쪽) */}
-             <span className="text-lg font-semibold">{teacher.name}</span>
+             <span className="text-lg font-semibold  dark:text-black">{teacher.name}</span>
          
              {/* 날짜 + 삭제버튼 (오른쪽) */}
              <div className="flex items-center space-x-3">
@@ -286,7 +290,7 @@ export default function CreateForm() {
                    min={getMonthRange(selectedMonth).start}
                    max={getMonthRange(selectedMonth).end}
                    onChange={(e) => updateLeaveDate(idx, "start", e.target.value)}
-                   className="border p-1 rounded text-sm"
+                   className="border p-1 rounded text-sm  dark:text-black"
                  />
                </div>
                <div className="flex flex-col">
@@ -297,7 +301,7 @@ export default function CreateForm() {
                    min={getMonthRange(selectedMonth).start}
                    max={getMonthRange(selectedMonth).end}
                    onChange={(e) => updateLeaveDate(idx, "end", e.target.value)}
-                   className="border p-1 rounded text-sm"
+                   className="border p-1 rounded text-sm  dark:text-black"
                  />
                </div>
                <button
@@ -314,7 +318,8 @@ export default function CreateForm() {
           </div>
 
           {!isLoading ? (
-            <button onClick={handleGenerateDuty} className="mt-4 text-[#5a3d1e] text-lg font-semibold px-4 py-2 rounded transition-all duration-300 ease-in-out hover:bg-white/30 hover:backdrop-blur-sm">
+            <button onClick={handleGenerateDuty} className=
+            "mt-4 text-[#5a3d1e] text-lg font-semibold px-4 py-2 rounded transition-all duration-300 ease-in-out hover:bg-white/30 hover:backdrop-blur-sm dark:bg-amber-300 dark:text-gray-900 dark:hover:bg-amber-200 transition-all duration-300">
               당직표 생성하기 
             </button>
           ) : (

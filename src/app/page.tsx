@@ -1,29 +1,36 @@
 'use client'
 
+
+import { useEffect } from 'react';
 import Image from 'next/image'
 import Link from 'next/link'
 import { Header } from '@/components/Header'
 import { Footer } from '@/components/Footer'
 
 export default function HomePage() {
-
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = '//t1.daumcdn.net/kas/static/ba.min.js';
+    script.async = true;
+    document.querySelector('#kakao-ad')?.appendChild(script);
+  }, []);
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 md:px-10 py-16 space-y-10">
 
       
       {/* 제목 + 반짝이 */}
       <div className="relative w-fit mx-auto">
-      <h1 className="text-4xl md:text-6xl font-bold font-cute tracking-wide leading-tight text-gray-800 drop-shadow-md animate-fade-in-down text-center">
+      <h1 className="text-4xl md:text-6xl font-bold font-cute tracking-wide leading-tight text-gray-800 drop-shadow-md animate-fade-in-down text-center dark:text-white">
           Custom Schedule
         </h1>
       </div>
 
       {/* 설명 */}
-      <p className="text-gray-600 text-center text-base md:text-lg font-cute max-w-xl leading-relaxed">
+      <p className="text-gray-600 text-center text-base md:text-lg font-cute max-w-xl leading-relaxed dark:text-gray-100">
         당직표를 직접 만드는 일 생각보다 번거롭고 시간이 걸리죠. <br />
         그래서 준비했어요. <br />
         누구나 쉽게, 단 몇 분이면 <br />
-        <strong>맞춤 당직표를 자동으로 완성할 수 있어요.</strong>
+        <strong className="text-[#5a3d1e] dark:text-amber-300" >맞춤 당직표를 자동으로 완성할 수 있어요.</strong>
         <br />
         <br />
         선생님의 소중한 시간을 아껴드릴게요. <br />
@@ -41,9 +48,17 @@ export default function HomePage() {
         />
       </div>
 
-      {/* 광고 영역 */}
-      <div className="w-full max-w-2xl h-24 md:h-32 bg-white/50 border border-dashed border-gray-300 flex items-center justify-center rounded-xl shadow-inner">
-        <p className="text-gray-500 text-sm md:text-base">[ 이 공간은 광고가 들어올 예정입니다.]</p>
+     
+      <div className="w-full max-w-2xl px-4 md:px-0">
+        <div id="kakao-ad" className="flex justify-center items-center h-24 md:h-32">
+          <ins
+            className="kakao_ad_area"
+            style={{ display: 'none' }}
+            data-ad-unit="DAN-loD8LggbbgKOeb4m"
+            data-ad-width="728"
+            data-ad-height="90"
+          ></ins>
+        </div>
       </div>
 
       {/* 버튼 + 문구 */}
@@ -57,12 +72,12 @@ export default function HomePage() {
   {/* 버튼 그룹 - 오른쪽 정렬 */}
   <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4">
     <Link href="/create">
-      <button    className="flex items-center gap-2 px-6 py-2 rounded-full bg-[#fbc4ab] text-[#5a3d1e] font-semibold shadow-sm hover:bg-[#f6a28c] hover:shadow-md transition-all duration-300 whitespace-nowrap">
+      <button    className="flex items-center gap-2 px-6 py-2 rounded-full bg-[#fbc4ab] text-[#5a3d1e] font-semibold shadow-sm hover:bg-[#f6a28c] hover:shadow-md transition-all duration-300 whitespace-nowrap  dark:text-white">
         생성하기
       </button>
     </Link>
     <Link href="/input">
-      <button className="border border-black text-black py-2 px-6 rounded-full hover:bg-amber-200 hover:text-black hover:scale-105 transition-all duration-300 ease-in-out">
+      <button className="border border-black text-black py-2 px-6 rounded-full hover:bg-amber-200 hover:text-black hover:scale-105 transition-all duration-300 ease-in-out dark:text-white">
          추천하기
       </button>
     </Link>
