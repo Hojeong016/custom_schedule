@@ -1,5 +1,6 @@
 'use client';
 
+import { TabGroup, TabList, Tab, TabPanels, TabPanel } from '@headlessui/react';
 import { useMediaQuery } from 'react-responsive';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
@@ -18,6 +19,7 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 type DutyType = '오전 당직 1' | '오전 당직 2' | '오후 당직 1' | '오후 당직 2' | '합계';
+type AversionCategory = '월요일_오전' | '금요일_오후';
 
 
 interface Duty {
@@ -58,6 +60,17 @@ function getSpecialEventDates(events: { startDate: string; endDate: string }[]):
   return dateSet;
 }
 
+function getTeacherScore(
+  name: string,
+  stats: Record<string, Record<DutyType, number>>,
+  aversionStats: Record<string, Record<AversionCategory, number>>
+): number {
+  return (
+    (aversionStats[name]['월요일_오전'] ?? 0) * 2 +
+    (aversionStats[name]['금요일_오후'] ?? 0) * 1.5 +
+    (stats[name]['합계'] ?? 0) * 0.5
+  );
+}
 
 function isOnLeave(teacher: Teacher, date: Date) {
   if (!teacher.leaveDateStart || !teacher.leaveDateEnd) return false;
@@ -80,26 +93,60 @@ function isHoliday(date: Date) {
   return holidays.some((holiday) => holiday.toLocaleDateString('sv-SE') === date.toLocaleDateString('sv-SE'));
 }
 
+
+function calculateUnfairness(stats: Record<string, Record<DutyType, number>>): Record<string, number> {
+  const scores: Record<string, number> = {};
+
+  // 교사별 합계 구하기
+  const allValues = Object.values(stats).map(stat => stat['합계']);
+  const mean = allValues.reduce((a, b) => a + b, 0) / allValues.length;
+
+  // 표준편차 계산
+  for (const [name, stat] of Object.entries(stats)) {
+    const diff = stat['합계'] - mean;
+    scores[name] = parseFloat((diff * diff).toFixed(2)); // 제곱차를 점수화
+  }
+
+  return scores;
+}
+
+// 기피 카테고리 구분 함수
+function getAversionCategory(date: Date, dutyType: DutyType): AversionCategory | null {
+  const day = date.getDay(); // 1 = Monday, 5 = Friday
+  if (day === 1 && dutyType.includes('오전')) return '월요일_오전';
+  if (day === 5 && dutyType.includes('오후')) return '금요일_오후';
+  return null;
+}
+function getScoreColor(score: number): string {
+  if (score <= 1) return 'text-green-600';
+  if (score <= 3) return 'text-orange-500';
+  return 'text-red-600 font-bold';
+}
+// 3. generateSchedule 함수 내 통합
 export function generateSchedule(
   duties: Duty[],
   teachers: Teacher[],
   month: number
-): { schedule: AssignedDuty; leaveMap: LeaveMap; stats: Record<string, Record<DutyType, number>> } {
+): {
+  schedule: AssignedDuty;
+  leaveMap: LeaveMap;
+  stats: Record<string, Record<DutyType, number>>;
+  aversionStats: Record<string, Record<AversionCategory, number>>;
+} {
   const year = 2025;
   const daysInMonth = new Date(year, month, 0).getDate();
   const schedule: AssignedDuty = {};
   const leaveMap: LeaveMap = {};
   const stats: Record<string, Record<DutyType, number>> = {};
+  const aversionStats: Record<string, Record<AversionCategory, number>> = {};
+
 
   let excludedDates: Set<string> = new Set();
   if (typeof window !== 'undefined') {
     const eventsStr = sessionStorage.getItem('specialEvents');
     const specialEvents: { title: string; startDate: string; endDate: string }[] = eventsStr ? JSON.parse(eventsStr) : [];
     excludedDates = getSpecialEventDates(specialEvents);
-    
   }
-
-
 
   for (const teacher of teachers) {
     stats[teacher.name] = {
@@ -109,6 +156,10 @@ export function generateSchedule(
       '오후 당직 2': 0,
       '합계': 0,
     };
+    aversionStats[teacher.name] = {
+      '월요일_오전': 0,
+      '금요일_오후': 0,
+    };
   }
 
   for (let day = 1; day <= daysInMonth; day++) {
@@ -116,9 +167,7 @@ export function generateSchedule(
     const dateKey = dateObj.toLocaleDateString('sv-SE');
 
     if (excludedDates.has(dateKey) || isWeekend(dateObj) || isHoliday(dateObj)) continue;
-    console.log("❗ 제외 날짜 목록:", Array.from(excludedDates));
-    console.log("✔️ 현재 날짜 확인:", dateKey);
-    
+
     schedule[dateKey] = {};
     leaveMap[dateKey] = teachers.filter(t => isOnLeave(t, dateObj)).map(t => t.name);
     const assignedToday = new Set<string>();
@@ -138,11 +187,31 @@ export function generateSchedule(
       }
 
       const assignedTeachers: string[] = [];
+      const aversionCategory = getAversionCategory(dateObj, dutyType);
 
-      const sortedTeachers = shuffleArray(
-        [...teachers]
-          .filter(t => !leaveMap[dateKey].includes(t.name) && !assignedToday.has(t.name))
-      ).sort((a, b) => stats[a.name][dutyType] - stats[b.name][dutyType]);
+      let sortedTeachers = shuffleArray(
+        [...teachers].filter(t => {
+          const notOnLeave = !leaveMap[dateKey].includes(t.name);
+          const notAlreadyAssigned = !assignedToday.has(t.name);
+          const underLimit =
+            !aversionCategory || aversionStats[t.name][aversionCategory] < 2;
+          return notOnLeave && notAlreadyAssigned && underLimit;
+        })
+      );
+      // 정렬 기준: 기피 요일이면 aversionStats, 아니면 기존 stats
+      if (aversionCategory) {
+        // 기존 로직: aversionStats 순 정렬
+        // 개선: 점수 기반 정렬
+        sortedTeachers = sortedTeachers.sort(
+          (a, b) =>
+            getTeacherScore(a.name, stats, aversionStats) -
+            getTeacherScore(b.name, stats, aversionStats)
+        );
+      } else {
+        sortedTeachers = sortedTeachers.sort(
+          (a, b) => stats[a.name][dutyType] - stats[b.name][dutyType]
+        );
+      }
 
       for (let i = 0; i < duty.count && i < sortedTeachers.length; i++) {
         const teacher = sortedTeachers[i];
@@ -150,14 +219,16 @@ export function generateSchedule(
         assignedToday.add(teacher.name);
         stats[teacher.name][dutyType]++;
         stats[teacher.name]['합계']++;
+        if (aversionCategory) {
+          aversionStats[teacher.name][aversionCategory]++;
+        }
       }
 
-      console.log(`[${dateKey}] ${dutyType} 배정:`, assignedTeachers);
       schedule[dateKey][dutyType] = assignedTeachers;
     }
   }
 
-  return { schedule, leaveMap, stats };
+  return { schedule, leaveMap, stats, aversionStats };
 }
 
 export default function DutyCalendar() {
@@ -171,8 +242,10 @@ export default function DutyCalendar() {
   const [schedule, setSchedule] = useState<AssignedDuty>({});
   const [leaveMap, setLeaveMap] = useState<LeaveMap>({});
   const [stats, setStats] = useState<Record<string, Record<DutyType, number>>>({});
+  const [aversionStats, setAversionStats] = useState<Record<string, Record<AversionCategory, number>>>({});
   const [isClient, setIsClient] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [unfairness, setUnfairness] = useState<Record<string, number>>({});
 
   const getDutyColorClass = (dutyType: string) => {
     switch (dutyType) {
@@ -195,12 +268,17 @@ export default function DutyCalendar() {
     const teachers: Teacher[] = JSON.parse(teachersStr);
     const month = parseInt(monthStr, 10);
 
-    const { schedule, leaveMap, stats } = generateSchedule(duties, teachers, month);
+    const { schedule, leaveMap, stats: newStats, aversionStats: newAversion } = generateSchedule(duties, teachers, month);
+    const newUnfairness = calculateUnfairness(newStats);
+
     setSchedule(schedule);
     setLeaveMap(leaveMap);
-    setStats(stats);
+    // setStats(stats);
+    setStats(newStats);
+    setAversionStats(newAversion);
     setValue(new Date(2025, month - 1, 1));
     setRefreshKey(prev => prev + 1);
+    setUnfairness(newUnfairness);
   };
 
   const [excludedDates, setExcludedDates] = useState<Set<string>>(new Set());
@@ -379,46 +457,117 @@ export default function DutyCalendar() {
     </button>
   </div>
 </div>
+<Tab.Group>
+  <Tab.List className="flex gap-2 mb-4">
+    <Tab
+      className={({ selected }) =>
+        `px-4 py-2 rounded-full font-semibold transition-colors duration-200
+        ${selected ? 'bg-[#fbc4ab] text-[#5a3d1e]' : 'bg-gray-100 text-gray-500'}
+        hover:bg-[#fde2d4] hover:text-[#5a3d1e]
+        focus:outline-none`
+      }
+    >
+      📋 당직 통계
+    </Tab>
+    <Tab
+      className={({ selected }) =>
+        `px-4 py-2 rounded-full font-semibold transition-colors duration-200
+        ${selected ? 'bg-[#fbc4ab] text-[#5a3d1e]' : 'bg-gray-100 text-gray-500'}
+        hover:bg-[#fde2d4] hover:text-[#5a3d1e]
+        focus:outline-none`
+      }
+    >
+      📌 월요일 / 금요일 당직 통계
+    </Tab>
+  </Tab.List>
 
-  <div className="w-full flex flex-col md:flex-row gap-8 mt-16 items-start  dark:text-white">
-          {/* 📊 파이 차트 */}
-          <div className="w-full md:w-80 flex-shrink-0">
-            <h3 className="text-xl font-bold w-full text-left text-[#5a3d1e] dark:text-white ">📊 교사별 총 당직 비율</h3>
-            <DutyPieChart stats={stats} />
-          </div>
+  <Tab.Panels>
+    {/* 📋 당직 통계 탭 */}
+    <Tab.Panel>
+      <div className="w-full flex flex-col md:flex-row gap-8 mt-16 items-start dark:text-white">
+        {/* 📊 파이 차트 */}
+        <div className="w-full md:w-80 flex-shrink-0">
+          <h3 className="text-xl font-bold w-full text-left text-[#5a3d1e] dark:text-white">
+            📊 교사별 총 당직 비율
+          </h3>
+          <DutyPieChart stats={stats} />
+        </div>
 
-          {/* 📋 표 */}
-          <div className="flex-1 bg-white rounded-2xl shadow-lg p-6">
-            <h3 className="text-xl font-bold w-full text-left text-[#5a3d1e]">📋 당직 횟수 요약</h3>
-            <div className="overflow-x-auto">
-              <table className="min-w-full table-auto text-sm text-center dark:text-black">
-                <thead>
+        {/* 📋 당직 횟수 요약 테이블 */}
+        <div className="flex-1 bg-white rounded-2xl shadow-lg p-6">
+          <h3 className="text-xl font-bold w-full text-left text-[#5a3d1e]">📋 당직 횟수 요약</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-auto text-sm text-center dark:text-black">
+              <thead>
                 <tr className="bg-[#fff3e6] text-[#5a3d1e]">
-                    <th className="px-4 py-2 font-semibold">교사</th>
-                    <th className="px-4 py-2">🔍 오전 당직 1</th>
-                    <th className="px-4 py-2">🔍 오전 당직 2</th>
-                    <th className="px-4 py-2">🌙 오후 당직 1</th>
-                    <th className="px-4 py-2">🌙 오후 당직 2</th>
-                    <th className="px-4 py-2 text-amber-600 font-bold">합계</th>
+                  <th className="px-4 py-2 font-semibold">교사</th>
+                  <th className="px-4 py-2">🔍 오전 당직 1</th>
+                  <th className="px-4 py-2">🔍 오전 당직 2</th>
+                  <th className="px-4 py-2">🌙 오후 당직 1</th>
+                  <th className="px-4 py-2">🌙 오후 당직 2</th>
+                  <th className="px-4 py-2 text-amber-600 font-bold">합계</th>
+                  <th className="px-4 py-2 text-red-500 font-bold">불균형 점수</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(stats).map(([name, dutyStats], idx) => (
+                  <tr key={idx} className="hover:bg-[#fff7ed] transition-colors">
+                    <td className="px-4 py-2 text-gray-700">{name}</td>
+                    <td className="px-4 py-2 text-gray-600">{dutyStats['오전 당직 1']}</td>
+                    <td className="px-4 py-2 text-gray-600">{dutyStats['오전 당직 2']}</td>
+                    <td className="px-4 py-2 text-gray-600">{dutyStats['오후 당직 1']}</td>
+                    <td className="px-4 py-2 text-gray-600">{dutyStats['오후 당직 2']}</td>
+                    <td className="px-4 py-2 font-bold text-amber-600">{dutyStats['합계']}</td>
+                    <td className={`px-4 py-2 ${getScoreColor(unfairness[name] ?? 0)}`}>
+                        {unfairness[name]?.toFixed(2) ?? '-'}
+                      </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(stats).map(([name, dutyStats], idx) => (
-                     <tr key={idx} className="hover:bg-[#fff7ed] transition-colors">
-                      <td className="px-4 py-2 text-gray-700">{name}</td>
-                      <td className="px-4 py-2 text-gray-600">{dutyStats['오전 당직 1']}</td>
-                      <td className="px-4 py-2 text-gray-600">{dutyStats['오전 당직 2']}</td>
-                      <td className="px-4 py-2 text-gray-600">{dutyStats['오후 당직 1']}</td>
-                      <td className="px-4 py-2 text-gray-600">{dutyStats['오후 당직 2']}</td>
-                      <td className="px-4 py-2 font-bold text-amber-600">{dutyStats['합계']}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
-    </div>
-  );
+    </Tab.Panel>
+
+    {/* 📌 기피 시간대 탭 */}
+    <Tab.Panel>
+      <div className="mt-8 w-full bg-white rounded-2xl shadow-lg p-6">
+        <h3 className="text-xl font-bold w-full text-left text-[#5a3d1e]">
+          📌 월요일/금요일 당직 통계
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="min-w-full table-auto text-sm text-center dark:text-black">
+          <thead>
+            <tr className="bg-[#fff3e6] text-[#5a3d1e]">
+              <th className="px-4 py-2 font-semibold">교사</th>
+              <th className="px-4 py-2">📅 월요일 오전</th>
+              <th className="px-4 py-2">📅 금요일 오후</th>
+              <th className="px-4 py-2 text-red-600 font-bold">합계</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(aversionStats).map(([name, aversion]) => {
+              const totalAversion =
+                (aversion['월요일_오전'] ?? 0) + (aversion['금요일_오후'] ?? 0);
+              return (
+                <tr key={name} className="hover:bg-[#fff7ed] transition-colors">
+                  <td className="px-4 py-2 text-gray-700">{name}</td>
+                  <td className="px-4 py-2 text-gray-600">{aversion['월요일_오전']}</td>
+                  <td className="px-4 py-2 text-gray-600">{aversion['금요일_오후']}</td>
+                  <td className="px-4 py-2 font-semibold text-red-600">{totalAversion}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+          </table>
+        </div>
+      </div>
+    </Tab.Panel>
+  </Tab.Panels>
+</Tab.Group>
+</div>
+ </div>
+ ); 
+  
 }
