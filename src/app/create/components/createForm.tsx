@@ -4,16 +4,91 @@ import { motion } from 'framer-motion';
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+type FixedDuty = {
+  date: string;  // yyyy-mm-dd
+  dutyName: string;
+  teacherName: string;  // 오전 당직 1 같은 이름
+};
+
 type Duty = { name: string; count: number };
 type Teacher = {
   name: string;
   leaveDateStart?: string;
   leaveDateEnd?: string;
   hasError?: boolean; 
+  fixedDuties?: FixedDuty[]; 
+  isEditingLeave?: boolean;     
+  isEditingFixedDuty?: boolean;  
 };
 
 export default function CreateForm() {
   const router = useRouter();
+
+// 고정 당직 입력 상태
+const [fixedDutyInputs, setFixedDutyInputs] = useState<{ [key: number]: FixedDuty }>({});
+const [leaveInputs, setLeaveInputs] = useState<{ [key: number]: { start?: string; end?: string } }>({});
+
+// 고정 당직 입력 변경
+const updateFixedDutyInput = (teacherIndex: number, field: "date" | "dutyName", value: string) => {
+  setFixedDutyInputs(prev => ({
+    ...prev,
+    [teacherIndex]: {
+      ...prev[teacherIndex],
+      [field]: value,
+    }
+  }));
+};
+
+// 고정 당직 추가
+const addFixedDuty = (teacherIndex: number) => {
+  const input = fixedDutyInputs[teacherIndex];
+  if (!input?.date || !input?.dutyName) return;
+
+  setTeachers(prev => {
+    const updated = [...prev];
+    const teacher = updated[teacherIndex];
+    if (!teacher) {
+      alert('교사를 먼저 등록한 후 고정 당직을 설정할 수 있습니다.');
+      return prev;
+    }
+    const alreadyExists = teacher.fixedDuties?.some(
+      fd => fd.date === input.date && fd.dutyName === input.dutyName
+    );
+    if (!alreadyExists) {
+      teacher.fixedDuties = [
+        ...(teacher.fixedDuties || []),
+        {
+          ...input,
+          teacherName: teacher.name,   // 🔥 여기 teacherName 강제 추가!!!
+        }
+      ];
+    }
+    return updated;
+  });
+
+  setFixedDutyInputs(prev => ({
+    ...prev,
+    [teacherIndex]: { date: "", dutyName: "", teacherName: "" }
+  }));
+
+  const teacher = teachers[teacherIndex];
+  const existNow = teacher.fixedDuties?.some(fd => fd.date === input.date && fd.dutyName === input.dutyName);
+
+  if (existNow) {
+    alert('이미 같은 날짜에 같은 당직 유형이 등록되어 있습니다.');
+  }
+};
+
+
+
+// 고정 당직 삭제
+const removeFixedDuty = (teacherIndex: number, fixedDutyIndex: number) => {
+  setTeachers(prev => {
+    const updated = [...prev];
+    updated[teacherIndex].fixedDuties = (updated[teacherIndex].fixedDuties || []).filter((_, idx) => idx !== fixedDutyIndex);
+    return updated;
+  });
+};
 
   const dutyOptions = [
     { name: "오전 당직 1", emoji: "🌞", type: "morning1" },
@@ -25,9 +100,34 @@ export default function CreateForm() {
   const [selectedDuties, setSelectedDuties] = useState<Duty[]>([]);
   const [step, setStep] = useState(1);
   const [teacherName, setTeacherName] = useState("");
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+
+const toggleEditingLeave = (teacherIndex: number) => {
+  setTeachers(prev => {
+    const updated = [...prev];
+    updated[teacherIndex] = {
+      ...updated[teacherIndex],
+      isEditingLeave: !(updated[teacherIndex].isEditingLeave ?? false),
+     // isEditingFixedDuty: false,
+    };
+    return updated;
+  });
+};
+
+const toggleEditingFixedDuty = (teacherIndex: number) => {
+  setTeachers(prev => {
+    const updated = [...prev];
+    updated[teacherIndex] = {
+      ...updated[teacherIndex],
+      isEditingFixedDuty: !(updated[teacherIndex].isEditingFixedDuty ?? false),
+      //isEditingLeave: false,
+    };
+    return updated;
+  });
+};
 
   type SpecialEvent = {
     title: string;
@@ -92,7 +192,8 @@ export default function CreateForm() {
     setTeachers([...teachers, {
       name: teacherName.trim(),
       leaveDateStart: "",   
-      leaveDateEnd: ""      
+      leaveDateEnd: "",
+      fixedDuties: []        
     }]);
     setTeacherName("");
   };
@@ -115,7 +216,19 @@ export default function CreateForm() {
   const handleGenerateDuty = () => {
     let hasError = false;
 
+      // ✅ 새로 추가: "아직 추가 안한 연차" 검증
+      const hasUnsubmittedLeave = Object.values(leaveInputs).some(input => input?.start || input?.end);
+      if (hasUnsubmittedLeave) {
+        alert("입력 중인 연차가 있습니다. 추가 버튼을 눌러 저장해 주세요.");
+        return;
+      }
 
+      // ✅ 새로 추가: "아직 추가 안한 고정당직" 검증
+      const hasUnsubmittedFixedDuty = Object.values(fixedDutyInputs).some(input => input?.date || input?.dutyName);
+      if (hasUnsubmittedFixedDuty) {
+        alert("입력 중인 고정 당직이 있습니다. 추가 버튼을 눌러 저장해 주세요.");
+        return;
+      }
     // ✅ 새로 추가: 교사 수 체크
     if (teachers.length === 0) {
       alert("최소 1명 이상의 교사를 등록해주세요.");
@@ -158,11 +271,33 @@ export default function CreateForm() {
   
     // 세션 저장 및 이동
     if (typeof window !== "undefined") {
-      sessionStorage.removeItem('teachers');
+      const allFixedDuties = teachers.flatMap(teacher => teacher.fixedDuties || []);
+     
+      // ✅ 1. 고정당직 등록한 선생님 이름들
+      const fixedTeacherNames = new Set(allFixedDuties.map(fd => fd.teacherName));
+
+      // ✅ 2. 기존 등록된 교사 이름들
+      const teacherNamesSet = new Set(teachers.map(t => t.name));
+
+      // ✅ 3. teachers 배열에 없는 고정당직 선생님 추가
+      const missingTeachers = Array.from(fixedTeacherNames).filter(name => !teacherNamesSet.has(name));
+
+      const allTeachers = [
+        ...teachers,
+        ...missingTeachers.map(name => ({
+          name,
+          leaveDateStart: "",
+          leaveDateEnd: "",
+          fixedDuties: [],
+        }))
+      ];
+
+      // ✅ 4. 세션 저장
       sessionStorage.setItem('duties', JSON.stringify(selectedDuties));
-      sessionStorage.setItem('teachers', JSON.stringify(teachers));
+      sessionStorage.setItem('teachers', JSON.stringify(allTeachers));
       sessionStorage.setItem('month', selectedMonth.toString());
       sessionStorage.setItem('specialEvents', JSON.stringify(specialEvents));
+      sessionStorage.setItem('fixedDuties', JSON.stringify(allFixedDuties));
     }
   
     setIsLoading(true);
@@ -288,6 +423,7 @@ export default function CreateForm() {
               placeholder="교사 이름 입력"
               className="flex-1 px-4 py-2 rounded-2xl border border-gray-300 shadow-sm bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-300 transition-all"
             />
+            
             <button
               onClick={addTeacher}
             className="px-5 py-2 rounded-2xl bg-[#fbc4ab] text-[#5a3d1e] font-medium hover:bg-[#f6a28c] hover:shadow-md transition-all duration-300 dark:bg-amber-300 dark:text-gray-900 dark:hover:bg-amber-200 transition-all duration-300"
@@ -295,52 +431,177 @@ export default function CreateForm() {
           </div>
 
           <div className="w-full space-y-4 mt-4">
-            {teachers.map((teacher, idx) => (
-           <div
-           key={idx}
-           className={`relative p-5 rounded-2xl shadow-md bg-white border ${
-            teacher.hasError ? 'border-red-400 bg-red-50 dark:bg-red-50' : 'border-gray-200'
-          }`}
-         >
-           <div className="flex justify-between items-center w-full">
-             {/* 교사 이름 (왼쪽) */}
-             <span className="text-lg font-semibold  dark:text-black">{teacher.name}</span>
-         
-             {/* 날짜 + 삭제버튼 (오른쪽) */}
-             <div className="flex items-center space-x-3">
-               <div className="flex flex-col">
-                 <label className="text-xs text-gray-500 mb-0.5 text-right">연차 시작일</label>
-                 <input
-                   type="date"
-                   value={teacher.leaveDateStart || ""}
-                   min={getMonthRange(selectedMonth).start}
-                   max={getMonthRange(selectedMonth).end}
-                   onChange={(e) => updateLeaveDate(idx, "start", e.target.value)}
-                   className="border p-1 rounded text-sm  dark:text-black"
-                 />
-               </div>
-               <div className="flex flex-col">
-                 <label className="text-xs text-gray-500 mb-0.5 text-right">연차 종료일</label>
-                 <input
-                   type="date"
-                   value={teacher.leaveDateEnd || ""}
-                   min={getMonthRange(selectedMonth).start}
-                   max={getMonthRange(selectedMonth).end}
-                   onChange={(e) => updateLeaveDate(idx, "end", e.target.value)}
-                   className="border p-1 rounded text-sm  dark:text-black"
-                 />
-               </div>
-               <button
-                 onClick={() => removeTeacher(idx)}
-                 className="text-gray-400 hover:text-red-500 text-3xl font-bold"
-                 title="삭제"
-               >
-                 ×
-               </button>
-             </div>
-           </div>
-         </div>
-            ))}
+  {teachers.map((teacher, idx) => (
+   <div key={idx} className="relative p-5 rounded-2xl shadow-md bg-white space-y-2">
+  
+   {/* 🧑 교사 이름 + 등록 버튼 + 삭제 버튼 */}
+   <div className="flex items-center justify-between">
+     <span className="text-lg font-semibold dark:text-black">{teacher.name}</span>
+     <div className="flex items-center gap-2">
+       <button
+         type="button"
+         onClick={() => toggleEditingLeave(idx)}
+         className="flex items-center gap-1 px-3 py-1 rounded-lg text-sm font-semibold 
+            bg-[#fbc4ab] text-[#5a3d1e] hover:bg-[#f6a28c] 
+            dark:bg-amber-300 dark:text-gray-900 dark:hover:bg-amber-200 transition-all duration-300"
+        >
+         <span className="text-sm ml-1">
+        {teacher.isEditingLeave ? '▽' : '▷'}
+        </span>
+         연차 등록하기
+       </button>
+       <button
+         type="button"
+         onClick={() => toggleEditingFixedDuty(idx)}
+         className="flex items-center gap-1 px-3 py-1 rounded-lg text-sm font-semibold 
+         bg-[#fbc4ab] text-[#5a3d1e] hover:bg-[#f6a28c] 
+         dark:bg-amber-300 dark:text-gray-900 dark:hover:bg-amber-200 transition-all duration-300"
+     >
+         <span className="text-sm ml-1">
+         {teacher.isEditingFixedDuty ? '▽' : '▷'}
+        </span>
+         고정 당직일 등록하기
+       </button>
+       <button
+         onClick={() => removeTeacher(idx)}
+         className="text-gray-400 hover:text-red-500 text-xl font-bold"
+         title="삭제"
+       >
+         ×
+       </button>
+     </div>
+   </div>
+ 
+   {/* 📅 연차 입력폼 (버튼 아래에 위치) */}
+   {teacher.isEditingLeave && (
+  <div className="flex gap-2 mt-2">
+     <span className="text-sm font-semibold text-[#5a3d1e]">연차</span>
+    <input
+      type="date"
+      value={leaveInputs[idx]?.start || ""}
+      min={getMonthRange(selectedMonth).start}
+      max={getMonthRange(selectedMonth).end}
+      onChange={(e) =>
+        setLeaveInputs((prev) => ({
+          ...prev,
+          [idx]: { ...prev[idx], start: e.target.value },
+        }))
+      }
+      className="border px-2 py-1 rounded text-sm dark:text-black"
+    />
+    <input
+      type="date"
+      value={leaveInputs[idx]?.end || ""}
+      min={getMonthRange(selectedMonth).start}
+      max={getMonthRange(selectedMonth).end}
+      onChange={(e) =>
+        setLeaveInputs((prev) => ({
+          ...prev,
+          [idx]: { ...prev[idx], end: e.target.value },
+        }))
+      }
+      className="border px-2 py-1 rounded text-sm dark:text-black"
+    />
+    <button
+      type="button"
+      className="px-3 py-1 bg-gray-200 rounded text-sm font-semibold hover:bg-gray-300  dark:bg-amber-300 dark:text-gray-900 dark:hover:bg-amber-200 transition-all duration-300"
+      onClick={() => {
+        const input = leaveInputs[idx];
+        if (input?.start && input?.end) {
+          updateLeaveDate(idx, "start", input.start);
+          updateLeaveDate(idx, "end", input.end);
+        }
+        toggleEditingLeave(idx); // 폼 닫기
+      }}
+    >
+      추가
+    </button>
+  </div>
+)}
+ 
+   {/* 📌 연차 문자열 출력 */}
+   {teacher.leaveDateStart && teacher.leaveDateEnd && (
+     <div className="flex items-center gap-2 text-sm text-gray-700">
+     <div>
+       연차: {teacher.leaveDateStart} ~ {teacher.leaveDateEnd}
+     </div>
+     <button
+       type="button"
+       className="text-gray-400 hover:text-red-500 text-xl font-bold"
+       onClick={() => {
+         updateLeaveDate(idx, "start", "");
+         updateLeaveDate(idx, "end", "");
+       }}
+     >
+       ×
+     </button>
+   </div>
+   )}
+ 
+   {/* 📅 고정 당직 등록폼 (버튼 아래에 위치) */}
+   {teacher.isEditingFixedDuty && (
+     <div className="flex flex-wrap gap-2 mt-2">
+       <span className="text-sm font-semibold text-[#5a3d1e]">고정 당직</span>
+       <input
+         type="date"
+         value={fixedDutyInputs[idx]?.date || ""}
+         min={getMonthRange(selectedMonth).start}
+         max={getMonthRange(selectedMonth).end}
+         onChange={(e) => updateFixedDutyInput(idx, "date", e.target.value)}
+         className="border px-2 py-1 rounded text-sm dark:text-black"
+       />
+       <select
+         value={fixedDutyInputs[idx]?.dutyName || ""}
+         onChange={(e) => updateFixedDutyInput(idx, "dutyName", e.target.value)}
+         className="border px-2 py-1 rounded text-sm dark:text-black"
+       >
+         <option value="">당직 유형 선택</option>
+         {selectedDuties.map((duty, dutyIdx) => (
+           <option key={dutyIdx} value={duty.name}>
+             {duty.name}
+           </option>
+         ))}
+       </select>
+       <button
+         type="button"
+         onClick={() => {
+           addFixedDuty(idx);
+           toggleEditingFixedDuty(idx); 
+         }}
+         disabled={!fixedDutyInputs[idx]?.date || !fixedDutyInputs[idx]?.dutyName}
+         className={`px-3 py-1 bg-gray-200 rounded text-sm font-semibold hover:bg-gray-300  dark:bg-amber-300 dark:text-gray-900  dark:bg-amber-300 dark:text-gray-900 dark:hover:bg-amber-200 transition-all duration-300
+           ${fixedDutyInputs[idx]?.date && fixedDutyInputs[idx]?.dutyName
+             ? 'bg-[#fbc4ab] hover:bg-[#f6a28c] text-[#5a3d1e]'
+             : 'bg-gray-300 text-gray-400 cursor-not-allowed'}
+         `}
+       >
+         추가
+       </button>
+     </div>
+   )}
+ 
+   {/* 📝 고정 당직 문자열 리스트 */}
+   {teacher.fixedDuties && teacher.fixedDuties.length > 0 && (
+     <div className="flex flex-col gap-1 text-sm text-gray-700">
+       {teacher.fixedDuties
+         .sort((a, b) => a.date.localeCompare(b.date))
+         .map((fd, fdIdx) => (
+          <div key={fdIdx} className="flex items-center gap-2 text-sm text-gray-700">
+          <span>고정 당직 : {fd.date} - {fd.dutyName}</span>
+          <button
+            onClick={() => removeFixedDuty(idx, fdIdx)}
+            className="text-gray-400 hover:text-red-500 text-base font-bold"
+            title="고정 당직 삭제"
+          >
+            ×
+          </button>
+        </div>
+         ))}
+        </div>
+      )}
+    </div>
+  ))}
+
 
             {/* 교사 등록 섹션 아래에 추가 */}
 <h3 className="text-lg font-semibold text-left w-full text-[#5a3d1e] dark:text-white mt-8">3. 기관의 특별한 일정을 등록해주세요.</h3>
@@ -380,7 +641,7 @@ export default function CreateForm() {
 
   <button
     onClick={addSpecialEvent}
-    className="px-4 py-2 bg-[#fbc4ab] rounded-2xl text-[#5a3d1e] hover:bg-[#f6a28c]"
+    className="px-4 py-2 bg-[#fbc4ab] rounded-2xl text-[#5a3d1e] hover:bg-[#f6a28c]  dark:bg-amber-300 dark:text-gray-900 dark:hover:bg-amber-200 transition-all duration-300"
   >
     추가
   </button>

@@ -140,7 +140,11 @@ export function generateSchedule(
   const stats: Record<string, Record<DutyType, number>> = {};
   const aversionStats: Record<string, Record<AversionCategory, number>> = {};
 
+  // 🔥 1. 고정당직 먼저 세션에서 읽어오기
+  const fixedDutiesStr = typeof window !== 'undefined' ? sessionStorage.getItem('fixedDuties') : null;
+  const fixedDuties: { date: string; dutyName: string; teacherName: string }[] = fixedDutiesStr ? JSON.parse(fixedDutiesStr) : [];
 
+  // 🔥 2. 특별 일정도 세션에서 읽어오기
   let excludedDates: Set<string> = new Set();
   if (typeof window !== 'undefined') {
     const eventsStr = sessionStorage.getItem('specialEvents');
@@ -148,6 +152,7 @@ export function generateSchedule(
     excludedDates = getSpecialEventDates(specialEvents);
   }
 
+  // 🔥 3. 교사별 초기화
   for (const teacher of teachers) {
     stats[teacher.name] = {
       '오전 당직 1': 0,
@@ -162,16 +167,45 @@ export function generateSchedule(
     };
   }
 
+  // 🔥 4. 고정 당직 먼저 schedule에 반영
+  for (const fd of fixedDuties) {
+    const dateKey = fd.date;
+    const dutyName = fd.dutyName as DutyType;
+    const teacherName = fd.teacherName;
+
+    if (!schedule[dateKey]) {
+      schedule[dateKey] = {};
+    }
+    if (!schedule[dateKey][dutyName]) {
+      schedule[dateKey][dutyName] = [];
+    }
+    schedule[dateKey][dutyName]?.push(teacherName);
+
+    // 통계 반영
+    stats[teacherName][dutyName]++;
+    stats[teacherName]['합계']++;
+  }
+
+  // 🔥 5. 매일매일 배정
   for (let day = 1; day <= daysInMonth; day++) {
     const dateObj = new Date(year, month - 1, day);
     const dateKey = dateObj.toLocaleDateString('sv-SE');
 
     if (excludedDates.has(dateKey) || isWeekend(dateObj) || isHoliday(dateObj)) continue;
 
-    schedule[dateKey] = {};
+    // 스케줄, 연차 초기화
+    schedule[dateKey] = schedule[dateKey] || {};
     leaveMap[dateKey] = teachers.filter(t => isOnLeave(t, dateObj)).map(t => t.name);
-    const assignedToday = new Set<string>();
 
+    // 🔥 이 날짜에 이미 배정된 사람 (고정당직 포함) 세팅
+    const assignedToday = new Set<string>();
+    Object.values(schedule[dateKey]).forEach(names => {
+      names?.forEach(name => {
+        if (name) assignedToday.add(name);
+      });
+    });
+
+    // 🔥 duties에 따라 나머지 배정
     for (const duty of duties) {
       if (duty.count <= 0) continue;
 
@@ -186,37 +220,41 @@ export function generateSchedule(
         dutyType = '오후 당직 2';
       }
 
+      // 이미 고정당직으로 채워진 dutyType이면 skip
+      if (schedule[dateKey][dutyType]) continue;
+
       const assignedTeachers: string[] = [];
       const aversionCategory = getAversionCategory(dateObj, dutyType);
 
+      // 🔥 필터: 연차X, 이미 배정X, 기피횟수 미달
       let sortedTeachers = shuffleArray(
-        [...teachers].filter(t => {
+        teachers.filter(t => {
           const notOnLeave = !leaveMap[dateKey].includes(t.name);
           const notAlreadyAssigned = !assignedToday.has(t.name);
-          const underLimit =
+          const underAversionLimit =
             !aversionCategory || aversionStats[t.name][aversionCategory] < 2;
-          return notOnLeave && notAlreadyAssigned && underLimit;
+          return notOnLeave && notAlreadyAssigned && underAversionLimit;
         })
       );
-      // 정렬 기준: 기피 요일이면 aversionStats, 아니면 기존 stats
+
+      // 🔥 정렬: 기피요일이면 점수 기반, 아니면 통계 기반
       if (aversionCategory) {
-        // 기존 로직: aversionStats 순 정렬
-        // 개선: 점수 기반 정렬
-        sortedTeachers = sortedTeachers.sort(
-          (a, b) =>
-            getTeacherScore(a.name, stats, aversionStats) -
-            getTeacherScore(b.name, stats, aversionStats)
+        sortedTeachers.sort((a, b) =>
+          getTeacherScore(a.name, stats, aversionStats) -
+          getTeacherScore(b.name, stats, aversionStats)
         );
       } else {
-        sortedTeachers = sortedTeachers.sort(
-          (a, b) => stats[a.name][dutyType] - stats[b.name][dutyType]
+        sortedTeachers.sort((a, b) =>
+          stats[a.name][dutyType] - stats[b.name][dutyType]
         );
       }
 
+      // 🔥 실제 배정
       for (let i = 0; i < duty.count && i < sortedTeachers.length; i++) {
         const teacher = sortedTeachers[i];
         assignedTeachers.push(teacher.name);
         assignedToday.add(teacher.name);
+
         stats[teacher.name][dutyType]++;
         stats[teacher.name]['합계']++;
         if (aversionCategory) {
@@ -230,6 +268,7 @@ export function generateSchedule(
 
   return { schedule, leaveMap, stats, aversionStats };
 }
+
 
 export default function DutyCalendar() {
   const isMobile = useMediaQuery({ maxWidth: 768 });
@@ -246,6 +285,7 @@ export default function DutyCalendar() {
   const [isClient, setIsClient] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [unfairness, setUnfairness] = useState<Record<string, number>>({});
+  const [fixedDuties, setFixedDuties] = useState<{ date: string; dutyName: string; teacherName: string }[]>([]);
 
   const getDutyColorClass = (dutyType: string) => {
     switch (dutyType) {
@@ -261,6 +301,8 @@ export default function DutyCalendar() {
     const dutiesStr = sessionStorage.getItem('duties');
     const teachersStr = sessionStorage.getItem('teachers');
     const monthStr = sessionStorage.getItem('month');
+    
+
 
     if (!dutiesStr || !teachersStr || !monthStr) return;
 
@@ -293,6 +335,11 @@ export default function DutyCalendar() {
     const dates = getSpecialEventDates(specialEvents);
     setExcludedDates(dates);
     setSpecialEvents(specialEvents);
+
+   
+  const fixedDutiesStr = sessionStorage.getItem('fixedDuties');
+  const fixed = fixedDutiesStr ? JSON.parse(fixedDutiesStr) : [];
+  setFixedDuties(fixed);
   }, []);
 
   if (!isClient || !value) return null;
@@ -324,6 +371,7 @@ export default function DutyCalendar() {
     tileContent={({ date, view }) => {
       if (view !== 'month') return null;
       const dateKey = date.toLocaleDateString('sv-SE');
+      
       const dutiesToday = schedule[dateKey];
       const leavesToday = leaveMap[dateKey];
       
@@ -336,11 +384,14 @@ export default function DutyCalendar() {
       
       // 전역 excludedDates 사용
       const hasSpecialEvent = excludedDates.has(dateKey);
+      const fixedToday = fixedDuties.filter(fd => fd.date === dateKey);
 
+      
       const hasContent =
-        (dutiesToday && Object.keys(dutiesToday).length > 0) ||
-        (leavesToday && leavesToday.length > 0) ||
-        hasSpecialEvent;
+      (dutiesToday && Object.keys(dutiesToday).length > 0) ||
+      (leavesToday && leavesToday.length > 0) ||
+      (fixedToday.length > 0) ||   // 🧡 이 부분 추가
+      matchingEvent;
     
       if (!hasContent) return null;
 
@@ -348,6 +399,12 @@ export default function DutyCalendar() {
       if (isMobile) {
         return (
           <div className="mt-1 text-[10px] leading-3 space-y-1">
+          {fixedToday.map((fd) => (   
+            <div key={`${fd.date}-${fd.teacherName}-${fd.dutyName}`}>
+              📌 고정: {fd.teacherName} ({fd.dutyName})
+            </div>
+          ))}
+
             {matchingEvent && (
               <div className="bg-yellow-100 text-yellow-800 rounded p-1 font-medium">
                 📅 {matchingEvent.title}
@@ -361,20 +418,25 @@ export default function DutyCalendar() {
           </div>
         );
       }
-    
+  
+
       if (!dutiesToday && !leavesToday?.length && !hasSpecialEvent) return null;
       return (
         <div className="mt-1 text-[10px] leading-3 space-y-1">
+          {fixedToday.map((fd, idx) => (   // 🧡 추가된 부분
+            <div> 📌 고정: {fd.teacherName} ({fd.dutyName}) </div>
+          ))}
           {dutiesToday && Object.entries(dutiesToday).map(([dutyType, teacherNames], idx) => {
             const bgColor = getDutyColorClass(dutyType);
             return (
-              <div key={idx} className={`${bgColor} p-1 rounded-md`}>
+              <div key={dutyType} className={`${bgColor} p-1 rounded-md`}>
                 <span className="text-[11px] text-black font-semibold dark:text-black">
                   {dutyType}: <span className="font-normal text-black-900">{teacherNames.join(', ')}</span>
                 </span>
               </div>
             );
           })}
+
           {leavesToday?.length > 0 && (
             <div className="bg-red-50 text-red-500 rounded p-1 text-[10px] font-medium">
               📌 연차: {leavesToday.join(', ')}
