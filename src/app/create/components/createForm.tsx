@@ -264,11 +264,7 @@ const toggleEditingFixedDuty = (teacherIndex: number) => {
     }
   
     // ✅ 교사 수보다 당직 인원이 많은 경우
-    if (totalDutyCount > teachers.length) {
-      alert(`설정한 당직 인원이 전체 교사 수보다 많습니다. (${totalDutyCount}명 설정 / 교사 ${teachers.length}명)`);
-      return;
-    }
-  
+   
     // 세션 저장 및 이동
     if (typeof window !== "undefined") {
       const allFixedDuties = teachers.flatMap(teacher => teacher.fixedDuties || []);
@@ -290,8 +286,12 @@ const toggleEditingFixedDuty = (teacherIndex: number) => {
           leaveDateEnd: "",
           fixedDuties: [],
         }))
+        
       ];
-
+      if (totalDutyCount > allTeachers.length) {
+        alert(`설정한 당직 인원이 전체 교사 수보다 많습니다. (${totalDutyCount}명 설정 / 교사 ${allTeachers.length}명)`);
+        return;
+      }
       // ✅ 4. 세션 저장
       sessionStorage.setItem('duties', JSON.stringify(selectedDuties));
       sessionStorage.setItem('teachers', JSON.stringify(allTeachers));
