@@ -7,8 +7,21 @@ import Link from 'next/link'
 import { Header } from '@/components/Header'
 import { Footer } from '@/components/Footer'
 
+declare global {
+  interface Window {
+    kakaoAdFit?: {
+      reload: () => void;
+      [key: string]: any;
+    };
+  }
+}
+
 export default function HomePage() {
- 
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.kakaoAdFit) {
+      console.log("KakaoAdFit is loaded"); 
+    }
+  }, []);
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 md:px-10 py-16 space-y-10">
 

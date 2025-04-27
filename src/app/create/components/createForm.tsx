@@ -1,8 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState } from "react";
+import { useState ,useRef} from "react";
 import { useRouter } from "next/navigation";
+import MobileDatePicker from '../components/MobileDatePicker';
+import { useMediaQuery } from 'react-responsive';
 
 type FixedDuty = {
   date: string;  // yyyy-mm-dd
@@ -27,7 +29,28 @@ export default function CreateForm() {
 // 고정 당직 입력 상태
 const [fixedDutyInputs, setFixedDutyInputs] = useState<{ [key: number]: FixedDuty }>({});
 const [leaveInputs, setLeaveInputs] = useState<{ [key: number]: { start?: string; end?: string } }>({});
+const isAdding = useRef(false); 
+const isMobile: boolean = useMediaQuery({ maxWidth: 768 });
+ /** ✨ 수정 포인트: 교사 추가 핸들러를 분리 */
 
+ const handleAddTeacher = () => {
+  if (isAdding.current) return;  // ✅ 이미 추가 중이면 무시
+
+  if (teacherName.trim() === "") return;
+  
+  isAdding.current = true; // ✅ 추가 시작
+  setTeachers(prev => [...prev, {
+    name: teacherName.trim(),
+    leaveDateStart: "",
+    leaveDateEnd: "",
+    fixedDuties: [],
+  }]);
+  setTeacherName("");
+
+  setTimeout(() => {
+    isAdding.current = false;  // ✅ 아주 잠깐 후 다시 추가 가능하게
+  }, 100); 
+};
 // 고정 당직 입력 변경
 const updateFixedDutyInput = (teacherIndex: number, field: "date" | "dutyName", value: string) => {
   setFixedDutyInputs(prev => ({
@@ -187,17 +210,6 @@ const toggleEditingFixedDuty = (teacherIndex: number) => {
     setSelectedDuties(updated);
   };
 
-  const addTeacher = () => {
-    if (teacherName.trim() === "") return;
-    setTeachers([...teachers, {
-      name: teacherName.trim(),
-      leaveDateStart: "",   
-      leaveDateEnd: "",
-      fixedDuties: []        
-    }]);
-    setTeacherName("");
-  };
-
   const removeTeacher = (index: number) => {
     const updated = [...teachers];
     updated.splice(index, 1);
@@ -217,11 +229,14 @@ const toggleEditingFixedDuty = (teacherIndex: number) => {
     let hasError = false;
 
       // ✅ 새로 추가: "아직 추가 안한 연차" 검증
-      const hasUnsubmittedLeave = Object.values(leaveInputs).some(input => input?.start || input?.end);
-      if (hasUnsubmittedLeave) {
-        alert("입력 중인 연차가 있습니다. 추가 버튼을 눌러 저장해 주세요.");
-        return;
-      }
+      const hasUnsubmittedLeave = Object.entries(leaveInputs).some(([idxStr, input]) => {
+        const idx = Number(idxStr);
+        const teacher = teachers[idx];
+        if (!teacher) return false; // 교사가 없으면 무시
+        const alreadySaved = teacher.leaveDateStart && teacher.leaveDateEnd;
+        if (alreadySaved) return false; // 이미 저장된 교사는 무시
+        return input?.start || input?.end; // 입력창에 값이 남아있으면 문제
+      });
 
       // ✅ 새로 추가: "아직 추가 안한 고정당직" 검증
       const hasUnsubmittedFixedDuty = Object.values(fixedDutyInputs).some(input => input?.date || input?.dutyName);
@@ -286,7 +301,7 @@ const toggleEditingFixedDuty = (teacherIndex: number) => {
           leaveDateEnd: "",
           fixedDuties: [],
         }))
-        
+
       ];
       if (totalDutyCount > allTeachers.length) {
         alert(`설정한 당직 인원이 전체 교사 수보다 많습니다. (${totalDutyCount}명 설정 / 교사 ${allTeachers.length}명)`);
@@ -416,8 +431,8 @@ const toggleEditingFixedDuty = (teacherIndex: number) => {
               onChange={(e) => setTeacherName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  e.preventDefault(); // 폼 제출 방지
-                  addTeacher();
+                  e.preventDefault(); // 폼 기본 제출 막기
+                  handleAddTeacher(); // 핸들러 호출
                 }
               }}
               placeholder="교사 이름 입력"
@@ -425,7 +440,8 @@ const toggleEditingFixedDuty = (teacherIndex: number) => {
             />
             
             <button
-              onClick={addTeacher}
+               type="button"  // ✅ 버튼 타입 명시!
+               onClick={handleAddTeacher}
             className="px-5 py-2 rounded-2xl bg-[#fbc4ab] text-[#5a3d1e] font-medium hover:bg-[#f6a28c] hover:shadow-md transition-all duration-300 dark:bg-amber-300 dark:text-gray-900 dark:hover:bg-amber-200 transition-all duration-300"
             >추가</button>
           </div>
@@ -473,38 +489,71 @@ const toggleEditingFixedDuty = (teacherIndex: number) => {
    </div>
  
    {/* 📅 연차 입력폼 (버튼 아래에 위치) */}
-   {teacher.isEditingLeave && (
+   {/* 📅 연차 입력폼 (버튼 아래에 위치) */}
+{teacher.isEditingLeave && (
   <div className="flex gap-2 mt-2">
-     <span className="text-sm font-semibold text-[#5a3d1e]">연차</span>
-    <input
-      type="date"
-      value={leaveInputs[idx]?.start || ""}
-      min={getMonthRange(selectedMonth).start}
-      max={getMonthRange(selectedMonth).end}
-      onChange={(e) =>
-        setLeaveInputs((prev) => ({
-          ...prev,
-          [idx]: { ...prev[idx], start: e.target.value },
-        }))
-      }
-      className="border px-2 py-1 rounded text-sm dark:text-black"
-    />
-    <input
-      type="date"
-      value={leaveInputs[idx]?.end || ""}
-      min={getMonthRange(selectedMonth).start}
-      max={getMonthRange(selectedMonth).end}
-      onChange={(e) =>
-        setLeaveInputs((prev) => ({
-          ...prev,
-          [idx]: { ...prev[idx], end: e.target.value },
-        }))
-      }
-      className="border px-2 py-1 rounded text-sm dark:text-black"
-    />
+    <span className="text-sm font-semibold text-[#5a3d1e]">연차</span>
+
+    {/* 🧡 시작일 */}
+    {isMobile ? (
+      <MobileDatePicker
+        id={`leave-start-${idx}`} 
+        value={leaveInputs[idx]?.start || ""}
+        onChange={(newValue) =>
+          setLeaveInputs((prev) => ({
+            ...prev,
+            [idx]: { ...prev[idx], start: newValue },
+          }))
+        }
+      />
+    ) : (
+      <input
+        type="date"
+        value={leaveInputs[idx]?.start || ""}
+        min={getMonthRange(selectedMonth).start}
+        max={getMonthRange(selectedMonth).end}
+        onChange={(e) =>
+          setLeaveInputs((prev) => ({
+            ...prev,
+            [idx]: { ...prev[idx], start: e.target.value },
+          }))
+        }
+        className="border px-2 py-1 rounded text-sm dark:text-black"
+      />
+    )}
+
+    {/* 🧡 종료일 */}
+    {isMobile ? (
+      <MobileDatePicker
+        id={`leave-start-${idx}`} 
+        value={leaveInputs[idx]?.end || ""}
+        onChange={(newValue) =>
+          setLeaveInputs((prev) => ({
+            ...prev,
+            [idx]: { ...prev[idx], end: newValue },
+          }))
+        }
+      />
+    ) : (
+      <input
+        type="date"
+        value={leaveInputs[idx]?.end || ""}
+        min={getMonthRange(selectedMonth).start}
+        max={getMonthRange(selectedMonth).end}
+        onChange={(e) =>
+          setLeaveInputs((prev) => ({
+            ...prev,
+            [idx]: { ...prev[idx], end: e.target.value },
+          }))
+        }
+        className="border px-2 py-1 rounded text-sm dark:text-black"
+      />
+    )}
+
+    {/* 추가 버튼은 그대로 */}
     <button
       type="button"
-      className="px-3 py-1 bg-gray-200 rounded text-sm font-semibold hover:bg-gray-300  dark:bg-amber-300 dark:text-gray-900 dark:hover:bg-amber-200 transition-all duration-300"
+      className="px-3 py-1 bg-gray-200 rounded text-sm font-semibold hover:bg-gray-300 dark:bg-amber-300 dark:text-gray-900 dark:hover:bg-amber-200 transition-all duration-300"
       onClick={() => {
         const input = leaveInputs[idx];
         if (input?.start && input?.end) {
@@ -518,6 +567,7 @@ const toggleEditingFixedDuty = (teacherIndex: number) => {
     </button>
   </div>
 )}
+
  
    {/* 📌 연차 문자열 출력 */}
    {teacher.leaveDateStart && teacher.leaveDateEnd && (
@@ -540,45 +590,47 @@ const toggleEditingFixedDuty = (teacherIndex: number) => {
  
    {/* 📅 고정 당직 등록폼 (버튼 아래에 위치) */}
    {teacher.isEditingFixedDuty && (
-     <div className="flex flex-wrap gap-2 mt-2">
-       <span className="text-sm font-semibold text-[#5a3d1e]">고정 당직</span>
-       <input
-         type="date"
-         value={fixedDutyInputs[idx]?.date || ""}
-         min={getMonthRange(selectedMonth).start}
-         max={getMonthRange(selectedMonth).end}
-         onChange={(e) => updateFixedDutyInput(idx, "date", e.target.value)}
-         className="border px-2 py-1 rounded text-sm dark:text-black"
-       />
-       <select
-         value={fixedDutyInputs[idx]?.dutyName || ""}
-         onChange={(e) => updateFixedDutyInput(idx, "dutyName", e.target.value)}
-         className="border px-2 py-1 rounded text-sm dark:text-black"
-       >
-         <option value="">당직 유형 선택</option>
-         {selectedDuties.map((duty, dutyIdx) => (
-           <option key={dutyIdx} value={duty.name}>
-             {duty.name}
-           </option>
-         ))}
-       </select>
-       <button
-         type="button"
-         onClick={() => {
-           addFixedDuty(idx);
-           toggleEditingFixedDuty(idx); 
-         }}
-         disabled={!fixedDutyInputs[idx]?.date || !fixedDutyInputs[idx]?.dutyName}
-         className={`px-3 py-1 bg-gray-200 rounded text-sm font-semibold hover:bg-gray-300  dark:bg-amber-300 dark:text-gray-900  dark:bg-amber-300 dark:text-gray-900 dark:hover:bg-amber-200 transition-all duration-300
-           ${fixedDutyInputs[idx]?.date && fixedDutyInputs[idx]?.dutyName
-             ? 'bg-[#fbc4ab] hover:bg-[#f6a28c] text-[#5a3d1e]'
-             : 'bg-gray-300 text-gray-400 cursor-not-allowed'}
-         `}
-       >
-         추가
-       </button>
-     </div>
-   )}
+  <div className="flex flex-wrap gap-2 mt-2">
+    <span className="text-sm font-semibold text-[#5a3d1e]">고정 당직</span>
+
+    <MobileDatePicker
+      id={`fixed-duty-${idx}`}
+      value={fixedDutyInputs[idx]?.date || ""}
+      min={getMonthRange(selectedMonth).start}
+      max={getMonthRange(selectedMonth).end}
+      onChange={(newValue) => updateFixedDutyInput(idx, "date", newValue)}
+    />
+
+    <select
+      value={fixedDutyInputs[idx]?.dutyName || ""}
+      onChange={(e) => updateFixedDutyInput(idx, "dutyName", e.target.value)}
+      className="border px-2 py-1 rounded text-sm dark:text-black"
+    >
+      <option value="">당직 유형 선택</option>
+      {selectedDuties.map((duty, dutyIdx) => (
+        <option key={dutyIdx} value={duty.name}>
+          {duty.name}
+        </option>
+      ))}
+    </select>
+
+    <button
+      type="button"
+      onClick={() => {
+        addFixedDuty(idx);
+        toggleEditingFixedDuty(idx);
+      }}
+      disabled={!fixedDutyInputs[idx]?.date || !fixedDutyInputs[idx]?.dutyName}
+      className={`px-3 py-1 rounded text-sm font-semibold transition-all duration-300 ${
+        fixedDutyInputs[idx]?.date && fixedDutyInputs[idx]?.dutyName
+          ? 'bg-[#fbc4ab] hover:bg-[#f6a28c] text-[#5a3d1e]'
+          : 'bg-gray-300 text-gray-400 cursor-not-allowed'
+      }`}
+    >
+      추가
+    </button>
+  </div>
+)}
  
    {/* 📝 고정 당직 문자열 리스트 */}
    {teacher.fixedDuties && teacher.fixedDuties.length > 0 && (
@@ -612,33 +664,37 @@ const toggleEditingFixedDuty = (teacherIndex: number) => {
           </p>
 
 <div className="mt-6 w-full flex flex-col md:flex-row gap-3 items-center">
-  <input
-    type="text"
-    value={eventInput.title}
-    onChange={(e) => setEventInput({ ...eventInput, title: e.target.value })}
-    placeholder="일정 이름"
-    className="flex-1 px-4 py-2 rounded-2xl border border-gray-300 bg-white text-gray-800 placeholder-gray-400"
-  />
-  <div className="flex flex-row gap-2">
-  <input
-  type="date"
-  value={eventInput.startDate}
-  min={getMonthRange(selectedMonth).start}
-  max={getMonthRange(selectedMonth).end}
-  onChange={(e) => setEventInput({ ...eventInput, startDate: e.target.value })}
-  className="border px-2 py-1 rounded text-sm"
-/>
-
 <input
-  type="date"
-  value={eventInput.endDate}
-  min={getMonthRange(selectedMonth).start}
-  max={getMonthRange(selectedMonth).end}
-  onChange={(e) => setEventInput({ ...eventInput, endDate: e.target.value })}
-  className="border px-2 py-1 rounded text-sm"
+  type="text"
+  value={eventInput.title}
+  onChange={(e) => setEventInput({ ...eventInput, title: e.target.value })}
+  placeholder="일정 이름"
+  className="flex-1 px-4 py-2 rounded-2xl border border-gray-300 bg-white text-gray-800 placeholder-gray-400"
 />
-</div>
 
+<div className="flex flex-row gap-2 w-full md:w-auto">
+  <div className="flex-1">
+    <MobileDatePicker
+      id="event-start"
+      value={eventInput.startDate}
+      min={getMonthRange(selectedMonth).start}
+      max={getMonthRange(selectedMonth).end}
+      placeholder="시작일 선택"
+      onChange={(newValue) => setEventInput(prev => ({ ...prev, startDate: newValue }))}
+    />
+  </div>
+
+  <div className="flex-1">
+    <MobileDatePicker
+      id="event-end"
+      value={eventInput.endDate}
+      min={getMonthRange(selectedMonth).start}
+      max={getMonthRange(selectedMonth).end}
+      placeholder="종료일 선택"
+      onChange={(newValue) => setEventInput(prev => ({ ...prev, endDate: newValue }))}
+    />
+  </div>
+</div>
   <button
     onClick={addSpecialEvent}
     className="px-4 py-2 bg-[#fbc4ab] rounded-2xl text-[#5a3d1e] hover:bg-[#f6a28c]  dark:bg-amber-300 dark:text-gray-900 dark:hover:bg-amber-200 transition-all duration-300"

@@ -232,7 +232,7 @@ export function generateSchedule(
           const notOnLeave = !leaveMap[dateKey].includes(t.name);
           const notAlreadyAssigned = !assignedToday.has(t.name);
           const underAversionLimit =
-            !aversionCategory || aversionStats[t.name][aversionCategory] < 2;
+            !aversionCategory || aversionStats[t.name][aversionCategory] < 3;
           return notOnLeave && notAlreadyAssigned && underAversionLimit;
         })
       );
@@ -264,6 +264,7 @@ export function generateSchedule(
 
       schedule[dateKey][dutyType] = assignedTeachers;
     }
+
   }
 
   return { schedule, leaveMap, stats, aversionStats };
@@ -399,11 +400,11 @@ export default function DutyCalendar() {
       if (isMobile) {
         return (
           <div className="mt-1 text-[10px] leading-3 space-y-1">
-          {fixedToday.map((fd) => (   
-            <div key={`${fd.date}-${fd.teacherName}-${fd.dutyName}`}>
-              📌 고정: {fd.teacherName} ({fd.dutyName})
-            </div>
-          ))}
+        {fixedToday.map((fd, idx) => (   
+          <div key={`${fd.date}-${fd.teacherName}-${fd.dutyName}`}>
+            📌 고정: {fd.teacherName} ({fd.dutyName})
+          </div>
+        ))}
 
             {matchingEvent && (
               <div className="bg-yellow-100 text-yellow-800 rounded p-1 font-medium">
@@ -423,9 +424,11 @@ export default function DutyCalendar() {
       if (!dutiesToday && !leavesToday?.length && !hasSpecialEvent) return null;
       return (
         <div className="mt-1 text-[10px] leading-3 space-y-1">
-          {fixedToday.map((fd, idx) => (   // 🧡 추가된 부분
-            <div> 📌 고정: {fd.teacherName} ({fd.dutyName}) </div>
-          ))}
+         {fixedToday.map((fd, idx) => (   
+          <div key={`${fd.date}-${fd.teacherName}-${fd.dutyName}`}>
+            📌 고정: {fd.teacherName} ({fd.dutyName})
+          </div>
+        ))}
           {dutiesToday && Object.entries(dutiesToday).map(([dutyType, teacherNames], idx) => {
             const bgColor = getDutyColorClass(dutyType);
             return (
@@ -630,6 +633,7 @@ export default function DutyCalendar() {
 </Tab.Group>
 </div>
  </div>
+ 
  ); 
   
 }
